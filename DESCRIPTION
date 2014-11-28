@@ -1,0 +1,18 @@
+Package: ddhw
+Title: Data-Driven Hypothesis Weights
+Version: 0.1
+Authors@R: "First Last <first.last@example.com> [aut, cre]"
+Description: What the package does (one paragraph)
+Depends:
+    R (>= 3.1.0)
+License: What license is it under?
+LazyData: true
+Imports:
+    subplex,
+    slam,
+    Rsymphony
+Suggests:
+    testthat,
+    knitr,
+    gurobi
+VignetteBuilder: knitr
