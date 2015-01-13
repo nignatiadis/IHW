@@ -12,6 +12,16 @@ setClass("ddhw",
 
 
 ########## filter_statistic ###################################################
+filter_statistics.ddhw <- function(object){
+  object@df$filter_statistic
+}
+
+setGeneric("filter_statistics", function(object,value) standardGeneric("filter_statistics"))
+
+
+setMethod("filter_statistics", signature(object="ddhw"),
+          filter_statistics.ddhw)
+
 
 setGeneric("filter_statistics<-", function(object,value) standardGeneric("filter_statistics<-"))
 

@@ -37,9 +37,13 @@ ddhw_grouped <- function(unadj_p, groups, alpha,
 
 	if (optim_pval_threshold == "auto"){
 		# heuristic choice, need to check it afterwards
+		t_tmp <- get_bh_threshold(unadj_p, alpha, mtests=mtests)
+		bh_rejections <- sum(unadj_p <= t_tmp)
 		optim_pval_threshold <- min(1, 
-			max(get_bh_threshold(unadj_p, alpha, mtests=mtests)*nbins*2,
+			max(t_tmp*nbins*2,
 				min(unadj_p)*nbins*2) + .Machine$double.eps)
+	} else {
+		bh_rejections <- sum(p.adjust(unadj_p, method="BH") < alpha)
 	}
 
 
@@ -48,10 +52,12 @@ ddhw_grouped <- function(unadj_p, groups, alpha,
 		ws <- 1
 		weighted_pvalues <- unadj_p
 		ts <- get_bh_threshold(unadj_p, alpha, mtests=mtests)
-
+		solver_information <- list("R p.adjust function")
 	} else if (optim_method == "MILP"){
 		res <- ddhw_grouped_milp(unadj_p, groups, alpha, 
-					mtests, optim_pval_threshold, solver=solver,
+					mtests, optim_pval_threshold, 
+					regularization_term, 
+					bh_rejections=bh_rejections, solver=solver,
 					time_limit = time_limit, node_limit=node_limit)
 		solver_information <- res$solver_information
 		ws  <- res$ws
@@ -106,14 +112,15 @@ ddhw <- function(unadj_p, filter_statistic, nbins, alpha,...){
 # ddhw based on MILP formulation
 # (should) detect global optima
 ddhw_grouped_milp <- function(unadj_p, groups, alpha, mtests, 
-					optim_pval_threshold, solver="Rsymphony",
+					optim_pval_threshold, regularization_term, 
+					 bh_rejections =0 , solver="Rsymphony",
 					 time_limit=Inf, node_limit=Inf){
 
 	m <- length(unadj_p)
 	nbins <- length(levels(groups))
 
-	pvals_list <- split(unadj_p, groups)
-	m_groups <- sapply(pvals_list,length)
+	pvals_list <- split(unadj_p, groups)  
+	m_groups <- sapply(pvals_list,length) # number of pvals in each group
 
 
 	if (optim_pval_threshold < 1){
@@ -158,10 +165,61 @@ ddhw_grouped_milp <- function(unadj_p, groups, alpha, mtests,
 	plugin_fdr_constraint <- alpha - unlist(mapply(function(p, m_group) diff(c(0,p))* m_group * mtests/m, pvals_list, m_groups))
 	full_triplet <- rbind(full_triplet, matrix(plugin_fdr_constraint, nrow=1))
 
-
 	z_vars <- ncol(full_triplet) #number of binary variables
 
 	obj        <- rep(1, z_vars) # maximize number of rejections
+
+	# start with new code which introduces regularization
+
+	# |t_g - t_{g-1}| = f_g  introduce absolute value constants, i.e. introduce nbins-1 new continuous variables
+
+	full_triplet <- cbind(full_triplet, matrix(0,nrow(full_triplet),nbins-1)) 
+	obj <- c(obj, rep(-regularization_term, nbins-1))
+
+	# now add 2*(g-1) new constraints, which constrain the absolute value
+	# The first (g-1) constraints can be represented by the matrix [A I_{g-1}], where A has the form:
+	#
+	# 1 1 1 | -1 -1 -1 |          |                  # t_1 - t_2
+	#       |  1  1  1 | -1 -1 -1 |					 # t_2 - t_3
+	#       |          |  1  1  1 | -1 -1 -1         # t_3 - t_4
+	#
+	# (Replaces 1s by diff(c(0,p)) values) 
+
+	pdiff_list <- lapply(pvals_list, function(p) diff(c(0,p)))
+
+	constraint_matrix_block <- function(g, p_length, pdiff){
+		mat <- matrix(0, nbins-1, p_length)
+		if (g == nbins){
+			mat[g-1,] <- -pdiff
+		} else if (g == 1) {
+			mat[g,] <- pdiff
+		} else {
+			mat[g,] <- pdiff
+			mat[g-1,] <- - pdiff
+ 		}
+ 		mat
+ 	}
+
+ 
+ 	# now put above blocks together
+ 	constraint_matrix <- do.call(cbind, 
+ 		mapply(constraint_matrix_block, 1:nbins, p_lengths, pdiff_list, SIMPLIFY=F))
+
+ 	# add the identity matrix so that we get 
+ 	# t_g - t_{g-1} <= f_g  as well as  t_g - t_{g-1} >= - f_g
+ 	full_constraint_matrix <- rbind(cbind(constraint_matrix, diag(1, nbins-1)),
+ 									cbind(-constraint_matrix, diag(1, nbins-1)))
+
+
+ 	full_triplet <- rbind(full_triplet, full_constraint_matrix)
+
+    # regularization code ends here
+
+    # finally add an inequality ensuring that we get at least as many rejections as BH
+    bh_rj_inequality <- matrix(c(rep(1, z_vars), rep(0, nbins-1)), nrow=1)
+    full_triplet <- rbind(full_triplet, bh_rj_inequality)
+
+    nrows <- nrow(full_triplet)
 
 	if (solver=="Rsymphony") {
 		if (is.infinite(time_limit)) time_limit <- -1
@@ -188,11 +246,11 @@ ddhw_grouped_milp <- function(unadj_p, groups, alpha, mtests,
 		model$A <- full_triplet
 		model$obj <- obj
 		model$modelsense <- "max"
-		model$rhs        <- 0
+		model$rhs        <- c(rep(0,nrows-1), bh_rejections)
 		model$lb         <- 0
 		model$ub         <- 1
 		model$sense      <- '>'
-		model$vtype      <- 'B'
+		model$vtype      <- c(rep('B', z_vars), rep('C', nbins-1))
 
 		params <- list(OutputFlag = 0)
 		if (is.finite(time_limit)) params$TimeLimit <- time_limit
@@ -269,4 +327,81 @@ ddhw_grouped_subplex <- function(unadj_p, groups, alpha, mtests, regularization_
 	}
 
 	ws
+}
+
+bootstrapped_weight <- function(obj) {
+  groups <- groups_factor(obj)
+	pvals <- pvalues(obj)
+	for (lvl in levels(groups)){
+		idx <- which(groups == lvl)
+		sampled_idx <- sample(idx, replace=T)
+		pvals[idx] <- pvals[sampled_idx]
+	}
+	weights(ddhw_grouped(pvals, groups, alpha(obj)))
+}
+
+per_bin_fdrs <- function(obj) {
+	ts <- thresholds(obj)
+	groups <- groups_factor(obj)
+	pvals <- pvalues(obj)
+	pv_list <- split(pvals, groups)
+	print(sapply(pv_list,length))
+	fdrs <- mapply(function(t,pvec) length(pvec)*t/max(1, sum(pvec <= t)), ts, pv_list)
+	return(fdrs)
+}
+
+ddhw_reg_path <- function(unadj_p, filterstat, nbins, alpha, reg_pars, nreps, optim_pval_threshold="auto"){
+  rjs <- rep(NA, length(reg_pars))
+  ws_mat  <- matrix(NA, nrow = nbins, ncol= length(reg_pars))
+  cv_df <- list()
+
+  m <- length(unadj_p)
+  all_groups <- groups_by_filter(filterstat,nbins)
+  train_idxs <-createDataPartition(all_groups, p = .5, list = T, times = nreps)
+
+  for (i in seq_along(reg_pars)){
+  	reg_par <- reg_pars[i]
+  	ddhw_res <- ddhw(unadj_p, filterstat,nbins, alpha, 
+  		regularization_term=reg_par, solver="gurobi", optim_pval_threshold=optim_pval_threshold)
+  	rjs[i] <- rejections(ddhw_res)
+  	ws_mat[,i] <- weights(ddhw_res)
+
+
+  	rjs_train <- rep(NA,2*nreps)
+  	rjs_test  <- rep(NA,2*nreps)
+  	fdr_bias  <- rep(NA,2*nreps)
+  	fdr_bias_s <- rep(NA,2*nreps)
+
+  	for (n in 1:nreps){
+		train_idx <- train_idxs[[n]]
+		# previously was doing non-balanced splitting, now lets do it balanced!
+    	test_idx  <- setdiff(1:m, train_idx)
+    	ddhw_obj <- ddhw(unadj_p[train_idx], filterstat[train_idx], nbins, alpha,
+      		regularization_term=reg_par, solver="gurobi", optim_pval_threshold=optim_pval_threshold)
+    	ws <- weights(ddhw_obj)
+    	rjs_train[2*n-1] <- rejections(ddhw_obj)
+    	grps <- groups_by_filter(filterstat[test_idx],nbins)
+    	rjs_test[2*n - 1] <- sum(p.adjust(unadj_p[test_idx]/ws[grps], method="BH") < alpha)
+    	fdr_bias[2*n - 1] <- (rjs_train[2*n - 1]-rjs_test[2*n - 1])/max(rjs_test[2*n-1],rjs_train[2*n - 1],1)
+
+    	tmp <- train_idx
+    	train_idx <- test_idx
+    	test_idx <- tmp
+    	ddhw_obj <- ddhw(unadj_p[train_idx], filterstat[train_idx], nbins, alpha, 
+      		regularization_term=reg_par, solver="gurobi", optim_pval_threshold=optim_pval_threshold)
+    	ws <- weights(ddhw_obj)
+    	rjs_train[2*n] <- rejections(ddhw_obj)
+    	grps <- groups_by_filter(filterstat[test_idx],nbins)
+    	rjs_test[2*n] <- sum(p.adjust(unadj_p[test_idx]/ws[grps], method="BH") < alpha)
+    	fdr_bias[2*n] <- (rjs_train[2*n]-rjs_test[2*n])/max(rjs_test[2*n], rjs_train[2*n],1)
+
+   		fdr_bias_s[2*n - 1] <- (rjs_train[2*n] - rjs_test[2*n-1])/max(rjs_train[2*n],1)
+   		fdr_bias_s[2*n]     <- (rjs_train[2*n-1] - rjs_test[2*n])/max(rjs_train[2*n-1],1)
+  	}
+
+  	cv_df[[i]] <- data.frame(fdr_bias = fdr_bias, rjs_train = rjs_train, rjs_test= rjs_test, fdr_bias_s = fdr_bias_s)
+  }
+
+  reg_path <- list(reg_pars=reg_pars, rjs=rjs, ws=ws_mat, cv_df = cv_df)
+  reg_path
 }
