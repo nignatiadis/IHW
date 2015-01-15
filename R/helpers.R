@@ -26,3 +26,26 @@ get_bh_threshold <- function(pvals, alpha, mtests = length(pvals)){
   prejected <- which(pvals <= (1:m)/mtests*alpha)
   ifelse(length(prejected)==0, 0, pvals[prejected[which.max(prejected)]])
 }
+
+
+total_variation <- function(ws){
+	sum(abs(diff(ws)))
+}
+
+get_bh_thresholds <- function(unadj_p, filterstat, nbins, alpha){
+	t <- get_bh_threshold(unadj_p, alpha)
+	grps <- groups_by_filter(filterstat, nbins)
+	pv_list <- split(unadj_p, grps)
+	sapply(pv_list, function(ps) max(0, ps[ps <=t]))
+}
+
+get_wbh_weights<- function(obj){
+	weighted_pv <- pvalues(obj)/weights(obj, levels_only=F)
+	t <- get_bh_threshold(weighted_pv, alpha(obj))
+	m_groups <- table(groups_factor(obj))
+	grps <- groups_factor(obj)
+	pv_list <- split(pvalues(obj), grps)
+	ts <- sapply(pv_list, function(ps) max(0, ps[ps <=t]))
+	ts*sum(m_groups)/sum(ts*m_groups)
+}
+
