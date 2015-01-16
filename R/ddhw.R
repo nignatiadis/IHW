@@ -166,7 +166,7 @@ ddhw_grouped_milp <- function(unadj_p, groups, alpha, mtests,
 	
 	# add final constraint to matrix which corresponds to control of plug-in FDR estimate
 	diff_coefs <- unlist(mapply(function(p, m_group) diff(c(0,p))* m_group , pvals_list, m_groups))
-	plugin_fdr_constraint <- alpha - diff_coefs * mtests/m
+	plugin_fdr_constraint <- (alpha - diff_coefs * mtests/m)/m #alpha - diff_coefs * mtests/m
 	full_triplet <- rbind(full_triplet, matrix(plugin_fdr_constraint, nrow=1))
 
 	z_vars <- ncol(full_triplet) #number of binary variables
@@ -175,49 +175,80 @@ ddhw_grouped_milp <- function(unadj_p, groups, alpha, mtests,
 
 	# start with new code which introduces regularization
 
-	# |t_g - t_{g-1}| = f_g  introduce absolute value constants, i.e. introduce nbins-1 new continuous variables
+	# first we introduce #nbins new random variables T_g, such that
+	# t_{g} <= T_g < t'_{g} [in practice the second < has to be turned into a <=]
+	# this reflects the fact that for all these values of T_g, still the same hypotheses will be rejected
+	# in stratum g.
+
+	full_triplet <- cbind(full_triplet, matrix(0, nrow(full_triplet), nbins))
+
+	# Below we modify objective a tiny bit by enforcing some minimization on \sum m_g T_g
+	# because 1/(4m)* \sum m_g T_g << 1 we ensure that our objective of interest (number of rejections) does not change
+	# Motivation for this soft constraint:
+	# 1) Make final solution (in terms of threshold T_g) "somewhat" unique
+    # 2) (more importantly): assist solver in preventing possible violation of plugin FDR control due to numerical issues
+    # due to small p-values.
+
+	obj <- c(obj, -.25*m_groups/m)
+
+
+	# first g constraints representing t_{g} <= T_g can be represented by [-A I_g] with A:
+	#
+	#   1 1 |          |          |                  # t_1 
+	#       |  1  1  1 |          |					 # t_2 
+	#       |          |  1  1  1 |                  # t_3
+	#
+	#	 (Replace 1s by diff(c(0,p)) values) 
+
+	pdiff_list <- lapply(pvals_list, function(p) diff(c(0,p)))
+
+	left_ineq_matrix_block <- function(g, p_length, pdiff){
+		mat <- 	matrix(0, nbins, p_length)
+		mat[g,] <- - pdiff
+		mat
+ 	}
+
+
+ 	# now put above blocks together
+ 	ineq_matrix <-  rbind( cbind(do.call(cbind, mapply(left_ineq_matrix_block, 1:nbins, p_lengths, pdiff_list, SIMPLIFY=F)),
+ 							  	diag(1, nbins)))
+
+ 	# for these T_g's we also require the plug-in FDR estimate to be controlled 
+ 	# (in fact we could drop the old constraint on the t_g's, but the extra constraint could help with the relaxations)
+
+ 	# we also divide the constraint by m (arbitrary) so that the coefficient range of the matrix is not too large
+ 	# which could cause numerical problems
+	plugin_fdr_constraint2 <- matrix(c(rep(alpha/m,z_vars), -m_groups/m), nrow=1) 
+
+	# put these constraints together..
+	full_triplet <- rbind(full_triplet, ineq_matrix, plugin_fdr_constraint2)
+
+
+	# |T_g - T_{g-1}| = f_g  introduce absolute value constants, i.e. introduce nbins-1 new continuous variables
+
 
 	full_triplet <- cbind(full_triplet, matrix(0,nrow(full_triplet),nbins-1)) 
 	obj <- c(obj, rep(0, nbins-1))
 
-	# now add 2*(g-1) new constraints, which constrain the absolute value
-	# The first (g-1) constraints can be represented by the matrix [A I_{g-1}], where A has the form:
-	#
-	# 1 1 1 | -1 -1 -1 |          |                  # t_1 - t_2
-	#       |  1  1  1 | -1 -1 -1 |					 # t_2 - t_3
-	#       |          |  1  1  1 | -1 -1 -1         # t_3 - t_4
-	#
-	# (Replaces 1s by diff(c(0,p)) values) 
+	# we now need inequalities: T_g - T_{g-1} + f_g >= 0    and -T_g + T_{g-1} + f_g >= 0
+	# start with matrix diff_matrix (nbins-1) X nbins as a scaffold i.e.
+	# 
+	#  -1  1 
+	#     -1  1
+	#        -1  1
 
-	pdiff_list <- lapply(pvals_list, function(p) diff(c(0,p)))
 
-	constraint_matrix_block <- function(g, p_length, pdiff){
-		mat <- matrix(0, nbins-1, p_length)
-		if (g == nbins){
-			mat[g-1,] <- -pdiff
-		} else if (g == 1) {
-			mat[g,] <- pdiff
-		} else {
-			mat[g,] <- pdiff
-			mat[g-1,] <- - pdiff
- 		}
- 		mat
- 	}
+	diff_matrix <- diag(-1,nbins-1,nbins) + cbind(rep(0,nbins-1), diag(1,nbins-1))
+	abs_constraint_matrix <- rbind(cbind(slam::simple_triplet_zero_matrix(nbins-1, z_vars,mode="double"), 
+										diff_matrix, slam::simple_triplet_diag_matrix(1, nrow=nbins-1)),
+								   cbind(slam::simple_triplet_zero_matrix(nbins-1, z_vars,mode="double"), 
+										-diff_matrix, slam::simple_triplet_diag_matrix(1, nrow=nbins-1)))
 
- 
- 	# now put above blocks together
- 	constraint_matrix <- do.call(cbind, 
- 		mapply(constraint_matrix_block, 1:nbins, p_lengths, pdiff_list, SIMPLIFY=F))
-
- 	# add the identity matrix so that we get 
- 	# t_g - t_{g-1} <= f_g  as well as  t_g - t_{g-1} >= - f_g
- 	abs_constraint_matrix <- rbind(cbind(constraint_matrix, diag(1, nbins-1)),
- 									cbind(-constraint_matrix, diag(1, nbins-1)))
 
  	# add final regularization inequality:
  	# 			\sum |w_g - w_{g-1}| <= reg_par      
- 	# <=>       \sum |t_g - t_{g-1}|*m <= reg_par * \sum m_g t_g
- 	regularization_constraint <- matrix(c(diff_coefs*regularization_term, rep(-m, nbins-1)), nrow=1)
+ 	# <=>       \sum |T_g - T_{g-1}|*m <= reg_par * \sum m_g T_g
+ 	regularization_constraint <- matrix(c(rep(0,z_vars), regularization_term/m*m_groups, rep(-1, nbins-1)), nrow=1)
 
  	# put all constraints together
  	full_triplet <- rbind(full_triplet, abs_constraint_matrix, regularization_constraint)
@@ -225,10 +256,14 @@ ddhw_grouped_milp <- function(unadj_p, groups, alpha, mtests,
     # regularization code ends here
 
     # finally add an inequality ensuring that we get at least as many rejections as BH
-    bh_rj_inequality <- matrix(c(rep(1, z_vars), rep(0, nbins-1)), nrow=1)
+    # added this feature as an ad-hoc solution to a problematic regularization implementation
+    # but actually seems to also speed up the optimization problem!
+
+    bh_rj_inequality <- matrix(c(rep(1, z_vars), rep(0, 2*nbins-1)), nrow=1)
     full_triplet <- rbind(full_triplet, bh_rj_inequality)
 
     nrows <- nrow(full_triplet)
+
 
 	if (solver=="Rsymphony") {
 		if (is.infinite(time_limit)) time_limit <- -1
@@ -259,14 +294,20 @@ ddhw_grouped_milp <- function(unadj_p, groups, alpha, mtests,
 		model$lb         <- 0
 		model$ub         <- 1   # |t_g - t_{g-1}| actually in [0,2] but [0,1] should be good enough
 		model$sense      <- '>'
-		model$vtype      <- c(rep('B', z_vars), rep('C', nbins-1))
+		model$vtype      <- c(rep('B', z_vars), rep('C', 2*nbins-1))
 
-		params <- list(OutputFlag = 0)
+		# the parameters below make the optimization procedure MUCH slower
+		# but they are actually necessary... (need to check what happens with open source solvers)
+		# turns out that enforcing T_g >= t_g is numerically very hard in the context of this problem
+
+		params <- list(NumericFocus=3, FeasibilityTol=10^(-9),OutputFlag = 0)
+
 		if (is.finite(time_limit)) params$TimeLimit <- time_limit
 		if (is.finite(node_limit)) params$NodeLimit <- node_limit
 		res <- gurobi(model, params)
 		sol <- res$x
 		solver_status <- ""
+
 	} else {
 		stop("Only gurobi and Rsymphony solvers are currently supported.")
 	}
@@ -282,14 +323,22 @@ ddhw_grouped_milp <- function(unadj_p, groups, alpha, mtests,
 		ifelse(length(max_idx)==0, .0, plist[max_idx])
 	}
 
-	t_thresholds <- mapply(get_threshold, pvals_list, pidx_list)
-	ws <-  if (all(t_thresholds == .0)){
+	#get_threshold2 <- function(pdiff, pidx){
+	#	sum(pdiff*pidx)
+	#}
+
+	t_thresholds1 <- mapply(get_threshold, pvals_list, pidx_list)     # to be stored in ddhw object
+	#t_thresholds2 <- mapply(get_threshold2, pdiff_list, pidx_list)
+	t_thresholds <- sol[(z_vars+1):(z_vars+nbins)]    # to be used for calculating weights
+
+
+	ws <-  if (all(t_thresholds1 == .0)){
 				rep(1,nbins)
 			} else { 
 				t_thresholds*m/sum(m_groups*t_thresholds) #might need adjustment if mtests > m
 			}
 
-	list(ts = t_thresholds, ws = ws, solver_information = list(solver=solver, solver_status = solver_status))
+	list(ts = t_thresholds1, ws = ws, solver_information = list(solver=solver, solver_status = solver_status))
 }
 
 
