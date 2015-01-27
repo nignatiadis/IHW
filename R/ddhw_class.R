@@ -1,9 +1,11 @@
 setClass("ddhw",
-         	slots = list( 
+         	slots = list(
            		df = "data.frame",
            		weights = "numeric",
            		thresholds = "numeric",
            		alpha = "numeric",
+              nbins = "integer",
+              regularization_term = "numeric",
            		solver_information= "list"))
 
 
@@ -30,7 +32,7 @@ setReplaceMethod("filter_statistics", signature(object="ddhw", value="numeric"),
                   	object@df$filter_statistic <- value
                   	validObject(object)
                   	object
-                 }) 
+                 })
 
 
 ##########    groups   ###################################################
@@ -64,7 +66,7 @@ setReplaceMethod("weights", signature(object="ddhw", value="numeric"),
                   	object@weights <- value
                   	validObject(object)
                   	object
-                 }) 
+                 })
 
 ################### alpha #################################################
 alpha.ddhw <-function(object) object@alpha
@@ -113,7 +115,7 @@ setMethod("adj_pvalues", signature(object="ddhw"),
           adj_pvalues.ddhw)
 
 ########## rejections ###################################################
-rejections.ddhw <- function(object){
+rejections.ddhw <- function(object, method="both"){
 	groups <- groups_factor(object)
 
 	# use two different methods to check for number of rejections
@@ -122,11 +124,12 @@ rejections.ddhw <- function(object){
 	rjs1 <- sum(pvalues(object) <= thresholds(object, levels_only=F))
 	rjs2 <- sum(adj_pvalues(object) <= alpha(object))
 
-	if (rjs1 != rjs2) stop("Incosistent number of rejections")
-	rjs1
+	if (method=="both" & rjs1 != rjs2) stop("Incosistent number of rejections")
+  else if (method=="threshold") return(rjs1)
+	rjs2
 }
 
-setGeneric("rejections", function(object,value) standardGeneric("rejections"))
+setGeneric("rejections", function(object,value,...) standardGeneric("rejections"))
 
 
 setMethod("rejections", signature(object="ddhw"),
