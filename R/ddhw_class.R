@@ -124,9 +124,10 @@ rejections.ddhw <- function(object, method="both"){
 	rjs1 <- sum(pvalues(object) <= thresholds(object, levels_only=F))
 	rjs2 <- sum(adj_pvalues(object) <= alpha(object))
 
-	if (method=="both" & rjs1 != rjs2) stop("Incosistent number of rejections")
-  else if (method=="threshold") return(rjs1)
-	rjs2
+	#if (method=="both" & rjs1 != rjs2) stop("Incosistent number of rejections")
+  #else if (method=="threshold") return(rjs1)
+	#rjs2
+  max(rjs1,rjs2)
 }
 
 setGeneric("rejections", function(object,value,...) standardGeneric("rejections"))

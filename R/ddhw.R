@@ -18,6 +18,7 @@
 
 ddhw_grouped <- function(unadj_p, groups, alpha,
 		mtests = length(unadj_p),
+		bh_rejections = "auto",
 		optim_method = "MILP",
 		solver = "Rsymphony", #only relevant if optim_method == "MILP"
 		regularization_term = Inf,
@@ -31,7 +32,7 @@ ddhw_grouped <- function(unadj_p, groups, alpha,
 
 	if (!check_uniform_groups(groups)){
 		warning(paste0("Software and algorithm has only been tested with groups",
-			" of equal size."))
+			" of equal size."))	
 	}
 
 	nbins <- length(levels(groups))
@@ -39,12 +40,12 @@ ddhw_grouped <- function(unadj_p, groups, alpha,
 	if (optim_pval_threshold == "auto"){
 		# heuristic choice, need to check it afterwards
 		t_tmp <- get_bh_threshold(unadj_p, alpha, mtests=mtests)
-		bh_rejections <- sum(unadj_p <= t_tmp)
+		if (bh_rejections == "auto")  bh_rejections <- sum(unadj_p <= t_tmp)
 		optim_pval_threshold <- min(1,
 			max(t_tmp*nbins*2,
 				min(unadj_p)*nbins*2) + .Machine$double.eps)
 	} else {
-		bh_rejections <- sum(p.adjust(unadj_p, method="BH") < alpha)
+		if (bh_rejections == "auto") bh_rejections <- sum(p.adjust(unadj_p, method="BH") < alpha)
 	}
 
 	t_bh <- get_bh_threshold(unadj_p, alpha ,mtests=mtests)
@@ -94,9 +95,12 @@ ddhw_grouped <- function(unadj_p, groups, alpha,
 		ddhw_res <- ddhw_grouped(unadj_p, groups, alpha, mtests=mtests,
 			optim_method = optim_method, solver=solver,
 			regularization_term = regularization_term,
-			optim_pval_threshold <- optim_pval_threshold)
+			optim_pval_threshold = optim_pval_threshold,
+			time_limit = time_limit, node_limit = node_limit,
+			threads = threads, bh_rejections=bh_rejections)
 		return(ddhw_res)
 	}
+
 
 
 	adj_p <- p.adjust( weighted_pvalues, method = "BH", n = mtests)
@@ -531,19 +535,108 @@ model_selection <- function(ddhw_obj){
 
 
 # determines number of bins and regularization parameter automatically, returns appropriate output
-ddhw_auto <- function(unadj_p, filterstat, alpha, ...){
+ddhw_auto <- function(unadj_p, filterstat, alpha, 
+		nbins="auto", parametric_reps=0, resampling="nonparametric lfdr",...){
 	# some heuristic rule for determining number of bins
-	nbins <- max(min(20, floor(length(unadj_p)/2000)), 1)
+	if (nbins=="auto") nbins <- max(min(20, floor(length(unadj_p)/1000)), 1)
 	
 	# start by optimizing with what amounts to reg par = Infty
+	ddhw_full <- ddhw(unadj_p, filterstat, nbins, alpha, ...)
 
 	# determine maximum necessary regularization
+	max_reg <- total_variation(weights(ddhw_full))
 
+	print(paste("max reg:",max_reg))
 	# for reg_par = 0 to max_reg     (e.g. 10 values?) do the holdout-experiment
+	reg_par_number <- 10
+	reg_pars <- seq(0, max_reg, length=reg_par_number)
 
+	m <- length(unadj_p)
+ 	o <- order(filterstat)
+ 	train_idx <- o[seq(1,m, by=2)]
+ 	test_idx <- setdiff(1:m, train_idx)
+    grps <- groups_by_filter(filterstat[test_idx],nbins)
+
+ 	rjs_test <- rep(NA, reg_par_number)
+
+ 	# apply holdout method for decreasing value of the regularization parameter
+ 	# thus we can keep track of the rejections in the previous step and pass it to 
+ 	# the solver as a lower bound to speed things up a tiny bit
+ 	bh_rejections = "auto"
+ 	for (i in 1:reg_par_number){
+		ddhw_obj <- ddhw(unadj_p[train_idx], filterstat[train_idx], nbins, alpha,
+      						regularization_term=reg_pars[i], bh_rejections=bh_rejections, ...)
+		bh_rejections <- rejections(ddhw_obj)
+    	ws <- weights(ddhw_obj)
+    	#rjs_train<- rejections(ddhw_obj)
+    	rjs_test[i] <- sum(p.adjust(mydiv(unadj_p[test_idx],ws[grps]), method="BH") < alpha)
+ 	}
+
+ 	reg_par <- reg_pars[which.max(rjs_test)]
+
+ 	print(reg_par)
+
+ 	# prev. idea: 
 	# generate (10?20?) simulations with covmod and estimate FDR on reg_par selected from prev. step.
-
 	# while (FDR > 1.01*alpha) and reg_par >= 0.1 try with reg_par/2 instead
+
+	# instead be less greedy: use regularization_term from above example and try it with that
+	# if it does not work, revert to lambda = 0
+
+	if ((parametric_reps >0) && reg_par > 0){
+
+		if (resampling=="beta-uniform"){
+	    	covmod_fit<- covmod(unadj_p, filterstat, nbins)
+	    } else if (resampling=="nonparametric lfdr"){
+	    	lfdr_fit_obj <- lfdr_fit(unadj_p, groups_factor(ddhw_full))
+	    }
+
+    	FDP <- rep(NA, parametric_reps)
+
+    	for (i in 1:parametric_reps){
+    		print(paste("run",i))
+    		if (resampling=="beta-uniform"){
+	    		sim <- simulate(covmod_fit)
+	    	} else if (resampling=="nonparametric lfdr"){
+	    		sim <- with(lfdr_fit_obj, lfdr_sim(pvalue, lfdr, group))
+	    	}
+    		
+    		ddhw_param <- ddhw(sim$pvalue, sim$group, nbins, 
+    				alpha, regularization_term=reg_par, ...)
+    		print(paste("rejections:", rejections(ddhw_param)))
+ 			FDP[i] <- ifelse(rejections(ddhw_param) == 0, 0,
+ 							mean(1-sim$H[adj_pvalues(ddhw_param) <= alpha]))
+ 		}
+
+ 		FDR <- mean(FDP, na.rm=T) #find out why occasionally get NA..
+ 		print(FDR)
+ 		print(sd(FDP, na.rm=T))
+ 		reg_par <- ifelse(FDR <= alpha, reg_par, 0)
+	}
+	
+	print(reg_par)
+
+	ddhw(unadj_p, filterstat, nbins, alpha, regularization_term=reg_par, ...)
+
 
 	# return final result with 0.1..
 }
+
+lfdr_fit <- function(pvalue, group){
+  				pvals_list <- split(pvalue, group)
+  				lfdr_list <- lapply(pvals_list, function(pv) fdrtool(pv,
+  									 statistic="pvalue",plot=F,verbose=F)$lfdr)
+  				pvals <- unsplit(pvals_list, group)
+  				lfdrs <- unsplit(lfdr_list, group)
+  				fit_obj <- data.frame(pvalue=pvals, lfdr=lfdrs, group=group)
+  				fit_obj
+			}
+
+lfdr_sim <- function(pvalue, lfdr, group){
+  m <- length(pvalue)
+  H <- 1 - rbinom(m, 1 , lfdr)
+  sim_pvalue <- runif(m)
+  sim_pvalue[H==1] <- pvalue[H==1]
+  data.frame(pvalue=sim_pvalue, group=group, H=H)
+}
+
