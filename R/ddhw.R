@@ -50,12 +50,23 @@ ddhw_grouped <- function(unadj_p, groups, alpha,
 
 	t_bh <- get_bh_threshold(unadj_p, alpha ,mtests=mtests)
 
-	if (nbins == 1){
-		message("Only 1 group supplied, this reduces to the classic Benjamini-Hochberg method.")
+	# simple cases in which we can just use BH rather than MILP
+	if (nbins == 1 || regularization_term==0){
+
+		if (nbins == 1){
+			message("Only 1 group supplied, this reduces to the classic Benjamini-Hochberg method.")
+		}
 		ws <- 1
 		weighted_pvalues <- unadj_p
 		ts <- get_bh_threshold(unadj_p, alpha, mtests=mtests)
 		solver_information <- list("R p.adjust function")
+
+		if (regularization_term==0){
+			message("Regularization term equal to 0, this reduces to the classic Benjamini-Hochberg method.")
+			ws <- rep(1, nbins)
+			ts <- rep(ts, nbins)
+		}
+
 	} else if (optim_method == "MILP"){
 		res <- ddhw_grouped_milp(unadj_p, groups, alpha,
 					mtests, optim_pval_threshold,
@@ -358,6 +369,21 @@ ddhw_grouped_milp <- function(unadj_p, groups, alpha, mtests,
 						sol[(z_vars+1):(z_vars+nbins)]  # to be used for calculating weights
 					}
 
+    ####################################################################################################
+    # TODO!!!! I *NEED* to check t_thresholds1 vs t_thresholds, easy way to see if the solver screwed up
+    # numerically...In particular three simple checks: 
+    #
+    # 1) t_thresholds >= t_thresholds1
+    # 2) Plugin FDR has to be controlled (with respect to both t_thresholds, t_thresholds2)
+    # 3) total variation of weights has to be less than lambda
+    #
+    # Also what to do if the solver did *screw* up? Maybe restart solver with different numerical
+    # tolerances? 
+    #
+	# print(t_thresholds)
+	# print(t_thresholds1)
+	####################################################################################################
+
 	ws <-  if (all(t_thresholds1 == .0)){
 				rep(1,nbins)
 			} else {
@@ -566,7 +592,8 @@ ddhw_auto <- function(unadj_p, filterstat, alpha,
  	for (i in 1:reg_par_number){
 		ddhw_obj <- ddhw(unadj_p[train_idx], filterstat[train_idx], nbins, alpha,
       						regularization_term=reg_pars[i], bh_rejections=bh_rejections, ...)
-		bh_rejections <- rejections(ddhw_obj)
+		bh_rejections <- rejections(ddhw_obj) 
+		print(paste("prev rjs:",bh_rejections))
     	ws <- weights(ddhw_obj)
     	#rjs_train<- rejections(ddhw_obj)
     	rjs_test[i] <- sum(p.adjust(mydiv(unadj_p[test_idx],ws[grps]), method="BH") < alpha)
