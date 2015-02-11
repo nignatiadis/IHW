@@ -25,7 +25,11 @@ ddhw_grouped <- function(unadj_p, groups, alpha,
 		optim_pval_threshold = "auto",
 		time_limit=Inf,
 		node_limit=Inf,
-		threads=0) # only relevant if optim_method == "MILP"
+		threads=0,
+		solution_limit=Inf,
+		mip_gap_abs=Inf,
+		mip_gap = 10^(-4),
+		MIPFocus=0) # only relevant if optim_method == "MILP"
 {
 
 	groups <- as.factor(groups) #later: check if factor actually has correct levels..
@@ -73,7 +77,11 @@ ddhw_grouped <- function(unadj_p, groups, alpha,
 					regularization_term, t_bh=t_bh,
 					bh_rejections=bh_rejections, solver=solver,
 					time_limit = time_limit, node_limit=node_limit,
-					threads=threads)
+					solution_limit=solution_limit,
+					mip_gap_abs=mip_gap_abs,
+					mip_gap = mip_gap,
+					threads=threads,
+					MIPFocus=MIPFocus)
 		solver_information <- res$solver_information
 		ws  <- res$ws
 		ts  <- res$ts
@@ -100,7 +108,7 @@ ddhw_grouped <- function(unadj_p, groups, alpha,
 	# recursively call function again with higher threshold!
 	# seems to be faster to start with low threshold and then grow than start with huge MILP problem
 	# unfortunately this is not always true..
-	if (any(ts >= 1/2 * optim_pval_threshold)){
+	if ((!optim_pval_threshold==1) && any(ts >= 1/2 * optim_pval_threshold)){
 		optim_pval_threshold <- min(1,optim_pval_threshold*2)
 		message(paste0("rerunning with higher optim_pval_threshold (", optim_pval_threshold, ")"))
 		ddhw_res <- ddhw_grouped(unadj_p, groups, alpha, mtests=mtests,
@@ -108,7 +116,12 @@ ddhw_grouped <- function(unadj_p, groups, alpha,
 			regularization_term = regularization_term,
 			optim_pval_threshold = optim_pval_threshold,
 			time_limit = time_limit, node_limit = node_limit,
-			threads = threads, bh_rejections=bh_rejections)
+			threads = threads,
+			solution_limit=solution_limit, 
+			mip_gap_abs=mip_gap_abs,
+			mip_gap = mip_gap,
+			MIPFocus=MIPFocus,
+			bh_rejections=bh_rejections)
 		return(ddhw_res)
 	}
 
@@ -145,7 +158,11 @@ ddhw_grouped_milp <- function(unadj_p, groups, alpha, mtests,
 					 	t_bh=0, bh_rejections =0 ,
 					 	solver="Rsymphony",
 					 	time_limit=Inf, node_limit=Inf,
-					 	threads=0){
+					 	threads=0,
+					 	solution_limit=solution_limit,
+					 	mip_gap_abs=mip_gap_abs,
+					 	mip_gap = mip_gap,
+					 	MIPFocus=MIPFocus){
 
 	m <- length(unadj_p)
 	nbins <- length(levels(groups))
@@ -304,7 +321,8 @@ ddhw_grouped_milp <- function(unadj_p, groups, alpha, mtests,
 			model_rhs,
     		types = model_vtype,
 			max = T, verbosity = -2, time_limit = time_limit,
-			node_limit = node_limit, gap_limit = -1, first_feasible = FALSE)
+			node_limit = node_limit, gap_limit = mip_gap*100, #now default mip_gap=10^(-4) as in Gurobi while -1 default for Rsymphony
+			first_feasible = FALSE)
 		sol <- res$solution
 		solver_status <- res$status
 		
@@ -334,10 +352,15 @@ ddhw_grouped_milp <- function(unadj_p, groups, alpha, mtests,
 		# but they are actually necessary... (need to check what happens with open source solvers)
 		# turns out that enforcing T_g >= t_g is numerically very hard in the context of this problem
 
-		params <- list(NumericFocus=3, FeasibilityTol=10^(-9),OutputFlag = 0, Threads=threads)
+		params <- list(NumericFocus=3, FeasibilityTol=10^(-9),OutputFlag = 0, 
+							Threads=threads,MIPFocus=MIPFocus,
+							MIPGap = mip_gap)
 
 		if (is.finite(time_limit)) params$TimeLimit <- time_limit
 		if (is.finite(node_limit)) params$NodeLimit <- node_limit
+		if (is.finite(solution_limit)) params$SolutionLimit <- solution_limit
+		if (is.finite(mip_gap_abs)) params$MIPGapAbs <- mip_gap_abs
+
 		res <- gurobi(model, params)
 		sol <- res$x
 		solver_status <- ""
@@ -379,6 +402,9 @@ ddhw_grouped_milp <- function(unadj_p, groups, alpha, mtests,
     #
     # Also what to do if the solver did *screw* up? Maybe restart solver with different numerical
     # tolerances? 
+    # 
+    # For now deal with this with special casing regularization_term == 0 case by having it use BH, since
+    # this leads to speedup anyway, and this case is particularly bad for SYMPHONY it seems like.
     #
 	# print(t_thresholds)
 	# print(t_thresholds1)
@@ -593,11 +619,13 @@ ddhw_auto <- function(unadj_p, filterstat, alpha,
 		ddhw_obj <- ddhw(unadj_p[train_idx], filterstat[train_idx], nbins, alpha,
       						regularization_term=reg_pars[i], bh_rejections=bh_rejections, ...)
 		bh_rejections <- rejections(ddhw_obj) 
-		print(paste("prev rjs:",bh_rejections))
+		#print(paste("prev rjs:",bh_rejections))
     	ws <- weights(ddhw_obj)
     	#rjs_train<- rejections(ddhw_obj)
     	rjs_test[i] <- sum(p.adjust(mydiv(unadj_p[test_idx],ws[grps]), method="BH") < alpha)
+    	print(paste("prev rjs:", rjs_test[i]))
  	}
+
 
  	reg_par <- reg_pars[which.max(rjs_test)]
 
@@ -660,10 +688,37 @@ lfdr_fit <- function(pvalue, group){
 			}
 
 lfdr_sim <- function(pvalue, lfdr, group){
-  m <- length(pvalue)
-  H <- 1 - rbinom(m, 1 , lfdr)
-  sim_pvalue <- runif(m)
-  sim_pvalue[H==1] <- pvalue[H==1]
-  data.frame(pvalue=sim_pvalue, group=group, H=H)
+	m <- length(pvalue)
+	H <- 1 - rbinom(m, 1 , lfdr)
+	sim_pvalue <- runif(m)
+	sim_pvalue[H==1] <- pvalue[H==1]
+	data.frame(pvalue=sim_pvalue, group=group, H=H)
+}
+
+reg_path <- function(unadj_p, filterstat, nbins, alpha, reg_pars,...){
+	reg_par_number <- length(reg_pars)
+
+	m <- length(unadj_p)
+ 	o <- order(filterstat)
+ 	train_idx <- o[seq(1,m, by=2)]
+ 	test_idx <- setdiff(1:m, train_idx)
+    grps <- groups_by_filter(filterstat[test_idx],nbins)
+
+ 	rjs_test <- rep(NA, reg_par_number)
+
+ 	# apply holdout method for decreasing value of the regularization parameter
+ 	# thus we can keep track of the rejections in the previous step and pass it to 
+ 	# the solver as a lower bound to speed things up a tiny bit
+ 	bh_rejections = "auto"
+ 	for (i in 1:reg_par_number){
+		ddhw_obj <- ddhw(unadj_p[train_idx], filterstat[train_idx], nbins, alpha,
+      						regularization_term=reg_pars[i], bh_rejections=bh_rejections, ...)
+		bh_rejections <- rejections(ddhw_obj) 
+		print(paste("prev rjs:",bh_rejections))
+    	ws <- weights(ddhw_obj)
+    	#rjs_train<- rejections(ddhw_obj)
+    	rjs_test[i] <- sum(p.adjust(mydiv(unadj_p[test_idx],ws[grps]), method="BH") < alpha)
+ 	}
+ 	rjs_test
 }
 
