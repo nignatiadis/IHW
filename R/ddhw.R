@@ -22,6 +22,7 @@ ddhw_grouped <- function(unadj_p, groups, alpha,
 		optim_method = "MILP",
 		solver = "Rsymphony", #only relevant if optim_method == "MILP"
 		regularization_term = Inf,
+		penalty="total variation",
 		optim_pval_threshold = "auto",
 		time_limit=Inf,
 		node_limit=Inf,
@@ -74,7 +75,9 @@ ddhw_grouped <- function(unadj_p, groups, alpha,
 	} else if (optim_method == "MILP"){
 		res <- ddhw_grouped_milp(unadj_p, groups, alpha,
 					mtests, optim_pval_threshold,
-					regularization_term, t_bh=t_bh,
+					regularization_term,
+					penalty=penalty,
+					t_bh=t_bh,
 					bh_rejections=bh_rejections, solver=solver,
 					time_limit = time_limit, node_limit=node_limit,
 					solution_limit=solution_limit,
@@ -138,6 +141,7 @@ ddhw_grouped <- function(unadj_p, groups, alpha,
 		 	alpha = alpha,
 			nbins = as.integer(nbins),
 			regularization_term = regularization_term,
+			penalty = penalty,
 		 	solver_information = solver_information)
 }
 
@@ -155,6 +159,7 @@ ddhw <- function(unadj_p, filter_statistic, nbins, alpha,...){
 # (should) detect global optima
 ddhw_grouped_milp <- function(unadj_p, groups, alpha, mtests,
 					 	optim_pval_threshold, regularization_term,
+					 	penalty="total variation",
 					 	t_bh=0, bh_rejections =0 ,
 					 	solver="Rsymphony",
 					 	time_limit=Inf, node_limit=Inf,
@@ -168,7 +173,7 @@ ddhw_grouped_milp <- function(unadj_p, groups, alpha, mtests,
 	nbins <- length(levels(groups))
 
 	pvals_list <- split(unadj_p, groups)
-	m_groups <- sapply(pvals_list,length) # number of pvals in each group
+	m_groups <- sapply(pvals_list,length) # number of pvals in each group (BEFORE applying optim_pval_threshold)
 
 
 	if (optim_pval_threshold < 1){
@@ -271,40 +276,83 @@ ddhw_grouped_milp <- function(unadj_p, groups, alpha, mtests,
 		full_triplet <- rbind(full_triplet, ineq_matrix, plugin_fdr_constraint2)
 
 
-		# |T_g - T_{g-1}| = f_g  introduce absolute value constants, i.e. introduce nbins-1 new continuous variables
+		if (penalty=="total variation"){
+			# this implements a penalty of the form: \sum_{g=2}^G |w_g - w_{g-1}| <= reg_par
+
+			# |T_g - T_{g-1}| = f_g  introduce absolute value constants, i.e. introduce nbins-1 new continuous variables
+
+			full_triplet <- cbind(full_triplet, matrix(0,nrow(full_triplet),nbins-1))
+			obj <- c(obj, rep(0, nbins-1))
+
+			# we now need inequalities: T_g - T_{g-1} + f_g >= 0    and -T_g + T_{g-1} + f_g >= 0
+			# start with matrix diff_matrix (nbins-1) X nbins as a scaffold i.e.
+			#
+			#  -1  1
+			#     -1  1
+			#        -1  1
 
 
-		full_triplet <- cbind(full_triplet, matrix(0,nrow(full_triplet),nbins-1))
-		obj <- c(obj, rep(0, nbins-1))
-
-		# we now need inequalities: T_g - T_{g-1} + f_g >= 0    and -T_g + T_{g-1} + f_g >= 0
-		# start with matrix diff_matrix (nbins-1) X nbins as a scaffold i.e.
-		#
-		#  -1  1
-		#     -1  1
-		#        -1  1
+			diff_matrix <- diag(-1,nbins-1,nbins) + cbind(rep(0,nbins-1), diag(1,nbins-1))
+			abs_constraint_matrix <- rbind(cbind(slam::simple_triplet_zero_matrix(nbins-1, z_vars,mode="double"),
+											diff_matrix, slam::simple_triplet_diag_matrix(1, nrow=nbins-1)),
+									   cbind(slam::simple_triplet_zero_matrix(nbins-1, z_vars,mode="double"),
+											-diff_matrix, slam::simple_triplet_diag_matrix(1, nrow=nbins-1)))
 
 
-		diff_matrix <- diag(-1,nbins-1,nbins) + cbind(rep(0,nbins-1), diag(1,nbins-1))
-		abs_constraint_matrix <- rbind(cbind(slam::simple_triplet_zero_matrix(nbins-1, z_vars,mode="double"),
-										diff_matrix, slam::simple_triplet_diag_matrix(1, nrow=nbins-1)),
-								   cbind(slam::simple_triplet_zero_matrix(nbins-1, z_vars,mode="double"),
-										-diff_matrix, slam::simple_triplet_diag_matrix(1, nrow=nbins-1)))
+ 			# add final regularization inequality:
+ 			# 			\sum |w_g - w_{g-1}| <= reg_par
+ 			# <=>       \sum |T_g - T_{g-1}|*m <= reg_par * \sum m_g T_g
+ 			regularization_constraint <- matrix(c(rep(0,z_vars), regularization_term/m*m_groups, rep(-1, nbins-1)), nrow=1)
+
+ 			# to be used for ub afterwards
+ 			regularization_ub <- c(rep(1, nbins), rep(2, nbins-1))
+
+ 		} else if (penalty=="uniform deviation"){
+ 			# this implements a penalty of the form: \sum_{g=1}^G |w_g -1| <= reg_par
+
+ 			# |m*T_g - \sum_{i=1}^G m_i T_i| = f_g  introduce absolute value constants, i.e. introduce nbins new continuous variables
+ 			
+			full_triplet <- cbind(full_triplet, matrix(0,nrow(full_triplet),nbins))
+			obj <- c(obj, rep(0, nbins))
+
+			# we now need inequalities: m*T_g - \sum_{i=1}^G m_i T_i + f_g >= 0   and -m*T_g  +  \sum_{i=1}^G m_iT_i + f_g >= 0
+			# start with matrix diff_matrix (nbins X nbins) as a scaffold i.e.
+			#
+			#  (m-m_1)    -m_2      -m_3   ......
+			#    -m_1  (m - m_2)    -m_3   ......
+			#    -m_1     -m_2    (m-m_3)  ......
+			#     .         .         .    .
+			#     .         .         .      .
+			#     .         .         .        .
 
 
- 		# add final regularization inequality:
- 		# 			\sum |w_g - w_{g-1}| <= reg_par
- 		# <=>       \sum |T_g - T_{g-1}|*m <= reg_par * \sum m_g T_g
- 		regularization_constraint <- matrix(c(rep(0,z_vars), regularization_term/m*m_groups, rep(-1, nbins-1)), nrow=1)
 
+			diff_matrix <- diag(m, nbins, nbins) - matrix(rep(m_groups, each=nbins), nrow=nbins) 
+
+			abs_constraint_matrix <- rbind(cbind(slam::simple_triplet_zero_matrix(nbins, z_vars,mode="double"),
+											diff_matrix, slam::simple_triplet_diag_matrix(1, nrow=nbins)),
+									   cbind(slam::simple_triplet_zero_matrix(nbins, z_vars,mode="double"),
+											-diff_matrix, slam::simple_triplet_diag_matrix(1, nrow=nbins)))
+
+
+ 			# add final regularization inequality:
+ 			# 			\sum |w_g - 1| <= reg_par
+ 			# <=>       \sum |m*T_g - \sum m_i T_i| <= reg_par * \sum m_i T_i
+ 			regularization_constraint <- matrix(c(rep(0,z_vars), regularization_term*m_groups, rep(-1, nbins)), nrow=1)
+
+ 			# to be used for ub afterwards
+ 			regularization_ub <- c(rep(1, nbins), rep(2*m, nbins))
+
+ 		} else {
+ 			stop("No such regularization penalty currently supported.")
+ 		}
  		# put all constraints together
  		full_triplet <- rbind(full_triplet, abs_constraint_matrix, regularization_constraint)
 
  	}
-    # regularization code ends here
 
     # finally add an inequality ensuring that we get at least as many rejections as BH
-    # added this feature as an ad-hoc solution to a problematic regularization implementation
+    # added this feature as an ad-hoc solution to a previous problematic regularization implementation
     # but actually seems to also speed up the optimization problem!
 
     bh_rj_inequality <- matrix(c(rep(1, z_vars), rep(0, ncol(full_triplet)-z_vars)), nrow=1)
@@ -314,12 +362,23 @@ ddhw_grouped_milp <- function(unadj_p, groups, alpha, mtests,
     model_rhs <- c(rep(0,nrows-1), bh_rejections)
     model_vtype <- c(rep('B', z_vars), rep('C', ncol(full_triplet)-z_vars))
 
+    # model ub will actually depend on which penalty we choose
+    # model ub = 1 for binary variables, 1 for thresholds, x for f_g, where
+    # x=2 for total variation, x=2*m for uniform deviation
+    model_ub <- c(rep(1, z_vars))
+    if (z_vars < nrows){
+    	model_ub <- c(model_ub, regularization_ub)
+    }
+   
 	if (solver=="Rsymphony") {
+
+		rsymphony_ub <- list(upper = list(ind = 1:ncol(full_triplet), val = model_ub))
+
 		if (is.infinite(time_limit)) time_limit <- -1
 		if (is.infinite(node_limit)) node_limit <- -1
 		res<- Rsymphony::Rsymphony_solve_LP(obj, full_triplet, rep(">=", nrows), 
 			model_rhs,
-    		types = model_vtype,
+    		types = model_vtype, bounds= rsymphony_ub,
 			max = T, verbosity = -2, time_limit = time_limit,
 			node_limit = node_limit, gap_limit = ifelse(mip_gap <= 10^(-4), -1, mip_gap*100), #now default mip_gap=10^(-4) as in Gurobi while -1 default for Rsymphony
 			first_feasible = FALSE)
@@ -344,7 +403,7 @@ ddhw_grouped_milp <- function(unadj_p, groups, alpha, mtests,
 		model$modelsense <- "max"
 		model$rhs        <- model_rhs
 		model$lb         <- 0
-		model$ub         <- 1   # |t_g - t_{g-1}| actually in [0,2] but [0,1] should be good enough
+		model$ub         <- model_ub
 		model$sense      <- '>'
 		model$vtype      <- model_vtype
 
@@ -364,7 +423,7 @@ ddhw_grouped_milp <- function(unadj_p, groups, alpha, mtests,
 
 		res <- gurobi(model, params)
 		sol <- res$x
-		solver_status <- ""
+		solver_status <- res$status
 
 	} else {
 		stop("Only gurobi and Rsymphony solvers are currently supported.")

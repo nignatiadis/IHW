@@ -5,7 +5,9 @@ total_variation <- function(ws){
     sum(abs(diff(ws)))
 }
 
-
+uniform_deviation <- function(ws){
+    sum(abs(ws-1))
+}
 #' Fix numerically unstable MILP thresholds (Helper function)
 #'
 #' second small linear program to be solved if MILP was numerically unstable
@@ -25,7 +27,7 @@ fix_thresholds <- function(ts, m_groups, rjs, alpha, lambda){
     # s.t. sum(ts_reg*m_groups) <= rjs*alpha
     # s.t. sum|m*ts_reg_{i+1} - m*ts_reg_{i}| <= lambda * sum(m_g * ts_reg_{g})
 
-        
+
 
 }
 

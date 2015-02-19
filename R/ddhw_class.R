@@ -6,6 +6,7 @@ setClass("ddhw",
            		alpha = "numeric",
               nbins = "integer",
               regularization_term = "numeric",
+              penalty = "character",
            		solver_information= "list"))
 
 
