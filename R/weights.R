@@ -1,5 +1,34 @@
 # functions to assist in working with weights
 
+
+total_variation <- function(ws){
+    sum(abs(diff(ws)))
+}
+
+
+#' Fix numerically unstable MILP thresholds (Helper function)
+#'
+#' second small linear program to be solved if MILP was numerically unstable
+#' then we try to manually check if total variation regularization can really be 
+#'  fullfilled
+#'
+#' @param ts Thresholds returned from MILP (corresponding to highest rejected p-value in each group)
+#' @param m_groups  Number of tests in each stratum
+#' @param rjs Number of rejections at MILP solver optimum
+#' @param alpha Nominal level of multiple testing procedure
+#' @param lambda Regularization parameter (so that total_variation(weights) <= lambda)
+#' @return Thresholds >= ts, which correspond to weights obeying the regularization condition
+
+fix_thresholds <- function(ts, m_groups, rjs, alpha, lambda){
+    # solve the LP
+    # ts_reg >= ts
+    # s.t. sum(ts_reg*m_groups) <= rjs*alpha
+    # s.t. sum|m*ts_reg_{i+1} - m*ts_reg_{i}| <= lambda * sum(m_g * ts_reg_{g})
+
+        
+
+}
+
 # normalize weights so that their sum will be equal to length(ws)
 # also make sure no negative weights appear
 normalize_weights <- function(ws){

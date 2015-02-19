@@ -28,9 +28,7 @@ get_bh_threshold <- function(pvals, alpha, mtests = length(pvals)){
 }
 
 
-total_variation <- function(ws){
-	sum(abs(diff(ws)))
-}
+
 
 get_bh_thresholds <- function(unadj_p, filterstat, nbins, alpha){
 	t <- get_bh_threshold(unadj_p, alpha)
