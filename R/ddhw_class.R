@@ -116,19 +116,32 @@ setMethod("adj_pvalues", signature(object="ddhw"),
           adj_pvalues.ddhw)
 
 ########## rejections ###################################################
-rejections.ddhw <- function(object, method="both"){
+rejections.ddhw <- function(object, method="adjpvals", groupwise=F){
 	groups <- groups_factor(object)
 
 	# use two different methods to check for number of rejections
 	# as internal test
 
-	rjs1 <- sum(pvalues(object) <= thresholds(object, levels_only=F))
-	rjs2 <- sum(adj_pvalues(object) <= alpha(object))
+  if (groupwise){
+    rjs1 <- sapply(split(adj_pvalues(object), groups_factor(object)),
+           function(adj_p) sum(adj_p <= alpha(object)))
+                          
+    rjs2 <- mapply(function(pv, t) sum(pv <=t), split(pvalues(object), groups_factor(object))
+                          ,thresholds(object))
 
-	#if (method=="both" & rjs1 != rjs2) stop("Incosistent number of rejections")
-  #else if (method=="threshold") return(rjs1)
-	#rjs2
-  max(rjs1,rjs2)
+    } else {
+
+	   rjs1 <- sum(pvalues(object) <= thresholds(object, levels_only=F))
+	   rjs2 <- sum(adj_pvalues(object) <= alpha(object))
+  }
+
+	
+  #max(rjs1,rjs2)
+  if (method=="adjpvals"){
+    return(rjs2)
+  } else if (method=="thresholds"){
+    return(rjs1)
+  }
 }
 
 setGeneric("rejections", function(object,value,...) standardGeneric("rejections"))
@@ -137,6 +150,22 @@ setGeneric("rejections", function(object,value,...) standardGeneric("rejections"
 setMethod("rejections", signature(object="ddhw"),
           rejections.ddhw)
 
+
+##### FDR estimate #############################################################
+plugin_fdr.ddhw <- function(object) {
+  ts <- thresholds(object)
+  m_groups <- table(groups_factor(object))
+  sum(ts*m_groups)/rejections(object, method="thresholds")
+}
+
+setGeneric("plugin_fdr", function(object, value,...) standardGeneric("plugin_fdr"))
+
+
+setMethod("plugin_fdr", signature(object="ddhw"),
+          plugin_fdr.ddhw)
+
+######## temporary: number of pvals in each stratum #############################
+stratum_sizes <- function(object) table(groups_factor(object))
 
 ############# validity ##########################################################
 setValidity( "ddhw", function( object ) {

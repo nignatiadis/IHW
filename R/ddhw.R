@@ -383,6 +383,7 @@ ddhw_grouped_milp <- function(unadj_p, groups, alpha, mtests,
 			node_limit = node_limit, gap_limit = ifelse(mip_gap <= 10^(-4), -1, mip_gap*100), #now default mip_gap=10^(-4) as in Gurobi while -1 default for Rsymphony
 			first_feasible = FALSE)
 		sol <- res$solution
+		print(str(res))
 		solver_status <- res$status
 		
 	} else if (solver=="gurobi"){
@@ -414,7 +415,7 @@ ddhw_grouped_milp <- function(unadj_p, groups, alpha, mtests,
 		params <- list(NumericFocus=3, FeasibilityTol=10^(-9), ScaleFlag=0 , Quad=1, IntFeasTol=10^(-9),
 							OutputFlag = 0, 
 							Threads=threads,MIPFocus=MIPFocus,
-							MIPGap = mip_gap)
+							MIPGap = mip_gap,  ResultFile='buggy_model.mps')
 
 		if (is.finite(time_limit)) params$TimeLimit <- time_limit
 		if (is.finite(node_limit)) params$NodeLimit <- node_limit
@@ -738,9 +739,10 @@ ddhw_auto <- function(unadj_p, filterstat, alpha, holdout_selection = F,
     			sim <- sims[[i]]
     			ddhw_param <- ddhw(sim$pvalue, sim$group, nbins, 
     					alpha, regularization_term=reg_par, ...)
-    			print(paste("rejections:", rejections(ddhw_param)))
- 				FDP[i] <- ifelse(rejections(ddhw_param) == 0, 0,
- 								mean(1-sim$H[adj_pvalues(ddhw_param) <= alpha]))
+    			tmp_idx <- adj_pvalues(ddhw_param) <= alpha
+    			print(paste("rejections:", sum(tmp_idx)))
+ 				FDP[i] <- ifelse(sum(tmp_idx) == 0, 0,
+ 								mean(1-sim$H[tmp_idx]))
  			}
  			# should not have NAs :(
  			if (any(is.na(FDP))) warning("NAs!!")

@@ -8,6 +8,21 @@ total_variation <- function(ws){
 uniform_deviation <- function(ws){
     sum(abs(ws-1))
 }
+
+thresholds_to_weights <- function(ts, m_groups){
+
+    if (length(ts) != length(m_groups)) stop("incosistent number of elements for ts and m_groups")
+
+    nbins <- length(ts)
+    m <- sum(m_groups)
+
+    if (all(ts == .0) ){
+        rep(1,nbins)
+    } else {
+        ts*m/sum(m_groups*ts) 
+    }
+}
+
 #' Fix numerically unstable MILP thresholds (Helper function)
 #'
 #' second small linear program to be solved if MILP was numerically unstable
@@ -21,14 +36,76 @@ uniform_deviation <- function(ws){
 #' @param lambda Regularization parameter (so that total_variation(weights) <= lambda)
 #' @return Thresholds >= ts, which correspond to weights obeying the regularization condition
 
-fix_thresholds <- function(ts, m_groups, rjs, alpha, lambda){
+regularize_thresholds <- function(ts, m_groups, rjs, alpha, lambda, 
+                    penalty="total variation", solver="Rsymphony"){
+
+    if (length(ts) != length(m_groups)) stop("incosistent number of elements for ts and m_groups")
+
+    nbins <- length(ts)
+    m <- sum(m_groups)
+
     # solve the LP
-    # ts_reg >= ts
-    # s.t. sum(ts_reg*m_groups) <= rjs*alpha
-    # s.t. sum|m*ts_reg_{i+1} - m*ts_reg_{i}| <= lambda * sum(m_g * ts_reg_{g})
+    # Ts >= ts
+    # s.t. sum(Ts_reg*m_groups) <= rjs*alpha
+    # s.t. sum|m*Ts_{i+1} - m*Ts_reg_{i}| <= lambda * sum(m_g * Ts_reg_{g})
 
 
+    if (penalty=="total variation"){
 
+            # |T_g - T_{g-1}| = f_g  introduce absolute value constants, i.e. introduce nbins-1 new continuous variables
+
+
+            # we now need inequalities: T_g - T_{g-1} + f_g >= 0    and -T_g + T_{g-1} + f_g >= 0
+            # start with matrix diff_matrix (nbins-1) X nbins as a scaffold i.e.
+            #
+            #  -1  1
+            #     -1  1
+            #        -1  1
+
+
+            diff_matrix <- diag(-1,nbins-1,nbins) + cbind(rep(0,nbins-1), diag(1,nbins-1))
+
+            constraint_matrix <- rbind(cbind(diff_matrix, diag(1, nrow=nbins-1)),
+                                       cbind(-diff_matrix, diag(1, nrow=nbins-1)))
+
+            plugin_fdr_constraint <- matrix(c(-m_groups, rep(0, nbins-1)), nrow=1) # >= - rjs*alpha
+
+
+            # add final regularization inequality:
+            #           \sum |w_g - w_{g-1}| <= reg_par
+            # <=>       \sum |T_g - T_{g-1}|*m <= reg_par * \sum m_g T_g
+            regularization_constraint <- matrix(c(lambda*m_groups, m*rep(-1, nbins-1)), nrow=1)
+
+            constraint_matrix <- rbind(plugin_fdr_constraint, regularization_constraint, constraint_matrix)
+
+            # to be used for ub afterwards
+            model_ub  <- c(rep(1, nbins), rep(2, nbins-1))
+            model_lb  <- c(ts,            rep(0, nbins-1))
+            model_rhs <- c(-rjs*alpha, rep(0,nrow(constraint_matrix)-1))
+
+            model_obj <- c(m_groups, rep(0, nbins-1))
+    } else if (penalty=="uniform deviation"){
+        stop("not yet implemented")
+    }
+
+
+    model_vtype <- rep('C', ncol(constraint_matrix))
+
+   
+    if (solver=="Rsymphony") {
+
+        rsymphony_bounds <- list(upper = list(ind = 1:ncol(constraint_matrix), val = model_ub),
+                                 lower = list(ind = 1:ncol(constraint_matrix), val = model_lb))
+
+     
+        res<- Rsymphony::Rsymphony_solve_LP(model_obj, constraint_matrix, rep(">=", nrow(constraint_matrix)),
+                                                model_rhs,  types = model_vtype, bounds= rsymphony_bounds,
+                                                max = F, first_feasible = FALSE)
+        sol <- res$solution
+        print(str(res))
+        solver_status <- res$status
+    }
+    sol[1:nbins]
 }
 
 # normalize weights so that their sum will be equal to length(ws)
