@@ -12,6 +12,11 @@ Imports:
     slam,
     Rsymphony
 Suggests:
+	DESeq,
+	DESeq2,
+	Biobase,
+	airway,
+	pasilla,
     testthat,
     knitr,
     gurobi

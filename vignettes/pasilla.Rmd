@@ -1,0 +1,50 @@
+---
+title: "Example analysis of pasilla dataset"
+author: "N. Ignatiadis"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{"Introduction to ddhw"}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\usepackage[utf8]{inputenc}
+---
+
+
+```{r}
+library("Biobase")
+library("DESeq2")
+library("ddhw")
+```
+
+Import the pasilla dataset and calculate p--values for differential expression:
+
+```{r}
+library("pasilla")
+data("pasillaGenes")
+countData <- counts(pasillaGenes)
+colData <- pData(pasillaGenes)[,c("condition","type")]
+dds <- DESeqDataSetFromMatrix(countData = countData,
+                                    colData = colData,
+                                    design = ~ condition)
+dds$condition <- factor(dds$condition,
+                            levels=c("untreated","treated"))
+dds <- DESeq(dds)
+dds <- results(dds)
+pasilla <-subset(dds, !is.na(pvalue))
+```
+
+Apply multiple testing using DDHW (symphony + gurobi) and BH:
+
+```{r}
+res_symphony <- ddhw(pasilla$pvalue,pasilla$baseMean, 10, 0.1, solver="Rsymphony")
+
+library("gurobi")
+res_gurobi <- ddhw(pasilla$pvalue, pasilla$baseMean, 10, 0.1, solver="gurobi")
+
+rejections(res_symphony)
+rejections(res_gurobi)
+
+#benjamini hochberg
+sum(p.adjust(pasilla$pvalue, method="BH") <= .1)
+```
+
