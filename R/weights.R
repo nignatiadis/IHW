@@ -23,6 +23,16 @@ thresholds_to_weights <- function(ts, m_groups){
     }
 }
 
+thresholds_to_weights_full <- function(ts){
+
+    m <- length(ts)
+
+    if (all(ts == .0) ){
+        rep(1,m)
+    } else {
+        ts*m/sum(ts) 
+    }
+}
 #' Fix numerically unstable MILP thresholds (Helper function)
 #'
 #' second small linear program to be solved if MILP was numerically unstable
@@ -83,7 +93,9 @@ regularize_thresholds <- function(ts, m_groups, rjs, alpha, lambda,
             model_lb  <- c(ts,            rep(0, nbins-1))
             model_rhs <- c(-rjs*alpha, rep(0,nrow(constraint_matrix)-1))
 
-            model_obj <- c(m_groups, rep(0, nbins-1))
+            #model_obj <- c(m_groups, rep(0, nbins-1)) #instead maybe try to minimize the deviations.
+            #model_obj <- c(rep(0, nbins), rep(-1,nbins-1))
+            model_obj <- c(-m_groups, rep(0, nbins-1))
     } else if (penalty=="uniform deviation"){
         stop("not yet implemented")
     }

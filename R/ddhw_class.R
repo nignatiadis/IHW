@@ -7,9 +7,19 @@ setClass("ddhw",
               nbins = "integer",
               regularization_term = "numeric",
               penalty = "character",
+              reg_path_information = "data.frame",
            		solver_information= "list"))
 
+#----------------- reg_path_information--------------------------------------#
 
+setGeneric("reg_path_information<-", function(object,value) standardGeneric("reg_path_information<-"))
+
+setReplaceMethod("reg_path_information", signature(object="ddhw", value="data.frame"),
+                 function( object, value ) {
+                    object@reg_path_information <- value
+                    validObject(object)
+                    object
+                 })
 
 
 
@@ -163,6 +173,23 @@ setGeneric("plugin_fdr", function(object, value,...) standardGeneric("plugin_fdr
 
 setMethod("plugin_fdr", signature(object="ddhw"),
           plugin_fdr.ddhw)
+
+
+##### #############################################################
+stratification_breaks.ddhw <- function(object) {
+  ts <- thresholds(object)
+  groups <- groups_factor(object)
+  filterstat_list <- split(filter_statistics(object), groups)
+  filterstats <- sapply(filterstat_list, max)
+  filterstats
+}
+
+setGeneric("stratification_breaks", function(object, value,...) standardGeneric("stratification_breaks"))
+
+
+setMethod("stratification_breaks", signature(object="ddhw"),
+          stratification_breaks.ddhw)
+
 
 ######## temporary: number of pvals in each stratum #############################
 stratum_sizes <- function(object) table(groups_factor(object))

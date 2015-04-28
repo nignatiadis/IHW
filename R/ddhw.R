@@ -19,6 +19,8 @@
 ddhw_grouped <- function(unadj_p, groups, alpha,
 		mtests = length(unadj_p),
 		bh_rejections = "auto",
+		rejections_bound = NULL,
+		local_fdr = F,
 		optim_method = "MILP",
 		solver = "Rsymphony", #only relevant if optim_method == "MILP"
 		regularization_term = Inf,
@@ -30,15 +32,11 @@ ddhw_grouped <- function(unadj_p, groups, alpha,
 		solution_limit=Inf,
 		mip_gap_abs=Inf,
 		mip_gap = 10^(-4),
-		MIPFocus=0) # only relevant if optim_method == "MILP"
+		MIPFocus=0,
+		lp_relaxation=FALSE) # only relevant if optim_method == "MILP"
 {
 
 	groups <- as.factor(groups) #later: check if factor actually has correct levels..
-
-	if (!check_uniform_groups(groups)){
-		warning(paste0("Software and algorithm has only been tested with groups",
-			" of equal size."))	
-	}
 
 	nbins <- length(levels(groups))
 
@@ -77,28 +75,31 @@ ddhw_grouped <- function(unadj_p, groups, alpha,
 					mtests, optim_pval_threshold,
 					regularization_term,
 					penalty=penalty,
+					local_fdr=local_fdr,
 					t_bh=t_bh,
-					bh_rejections=bh_rejections, solver=solver,
+					bh_rejections=bh_rejections, rejections_bound=rejections_bound,
+					solver=solver,
 					time_limit = time_limit, node_limit=node_limit,
 					solution_limit=solution_limit,
 					mip_gap_abs=mip_gap_abs,
 					mip_gap = mip_gap,
 					threads=threads,
-					MIPFocus=MIPFocus)
+					MIPFocus=MIPFocus,
+					lp_relaxation=lp_relaxation)
 		solver_information <- res$solver_information
 		ws  <- res$ws
-		ts  <- res$ts
-
-		# idea to explore later:
-		# instead of using the threshold naturally defined by the procedure, rerun BH with weights returned.
-		# This ensures that IF a suboptimal solution was found
-		# 1) due to numerical instability
-		# 2) because the user set node_limit or time_limit options
-		# the BH procedure will be able to improve upon this solution!
-
+		ts  <- res$ts		
 
 		weighted_pvalues <- mydiv(unadj_p, ws[groups])
 
+		# instead of using the threshold naturally defined by the procedure, rerun BH with weights returned.
+		# This ensures that IF a suboptimal solution was found
+		# 1) due to numerical instability
+		# 2) because the user set node_limit or time_limit or mip_gap options
+		# the BH procedure will be able to improve upon this solution!
+
+		ts <- ws*get_bh_threshold(weighted_pvalues, alpha)
+		
 	} else if (optim_method == "subplex"){
 		solver_information <- list(solver="subplex")
 		ws <- ddhw_grouped_subplex(unadj_p, groups, alpha,
@@ -115,6 +116,7 @@ ddhw_grouped <- function(unadj_p, groups, alpha,
 		optim_pval_threshold <- min(1,optim_pval_threshold*2)
 		message(paste0("rerunning with higher optim_pval_threshold (", optim_pval_threshold, ")"))
 		ddhw_res <- ddhw_grouped(unadj_p, groups, alpha, mtests=mtests,
+			local_fdr=local_fdr,
 			optim_method = optim_method, solver=solver,
 			regularization_term = regularization_term,
 			optim_pval_threshold = optim_pval_threshold,
@@ -124,11 +126,13 @@ ddhw_grouped <- function(unadj_p, groups, alpha,
 			mip_gap_abs=mip_gap_abs,
 			mip_gap = mip_gap,
 			MIPFocus=MIPFocus,
-			bh_rejections=bh_rejections)
+			lp_relaxation=lp_relaxation,
+			bh_rejections=bh_rejections, rejections_bound=rejections_bound)
 		return(ddhw_res)
 	}
 
 
+	names(ws) <- levels(groups)
 
 	adj_p <- p.adjust( weighted_pvalues, method = "BH", n = mtests)
 
@@ -142,6 +146,7 @@ ddhw_grouped <- function(unadj_p, groups, alpha,
 			nbins = as.integer(nbins),
 			regularization_term = regularization_term,
 			penalty = penalty,
+			reg_path_information = data.frame(),
 		 	solver_information = solver_information)
 }
 
@@ -160,14 +165,16 @@ ddhw <- function(unadj_p, filter_statistic, nbins, alpha,...){
 ddhw_grouped_milp <- function(unadj_p, groups, alpha, mtests,
 					 	optim_pval_threshold, regularization_term,
 					 	penalty="total variation",
-					 	t_bh=0, bh_rejections =0 ,
+					 	local_fdr=F,
+					 	t_bh=0, bh_rejections =0 , rejections_bound=NULL,
 					 	solver="Rsymphony",
 					 	time_limit=Inf, node_limit=Inf,
 					 	threads=0,
 					 	solution_limit=solution_limit,
 					 	mip_gap_abs=mip_gap_abs,
 					 	mip_gap = mip_gap,
-					 	MIPFocus=MIPFocus){
+					 	MIPFocus=MIPFocus,
+					 	lp_relaxation=lp_relaxation){
 
 	m <- length(unadj_p)
 	nbins <- length(levels(groups))
@@ -183,6 +190,9 @@ ddhw_grouped_milp <- function(unadj_p, groups, alpha, mtests,
 		pvals_list <- lapply(pvals_list, function(p) sort(p))
 	}
 
+
+	pmax <- max(unlist(pvals_list))
+	pvals_list <- lapply(pvals_list, function(p) p/pmax)
 	#ts_bh <- sapply(pvals_list, function(ps) max(0, ps[ps <= t_bh]))
 
 
@@ -217,7 +227,9 @@ ddhw_grouped_milp <- function(unadj_p, groups, alpha, mtests,
 
 	# add final constraint to matrix which corresponds to control of plug-in FDR estimate
 	diff_coefs <- unlist(mapply(function(p, m_group) diff(c(0,p))* m_group , pvals_list, m_groups))
-	plugin_fdr_constraint <- (alpha - diff_coefs * mtests/m)/m #alpha - diff_coefs * mtests/m
+	#plugin_fdr_constraint <- (alpha - diff_coefs * mtests/m)/m #alpha - diff_coefs * mtests/m
+	plugin_fdr_constraint <- (alpha/pmax - diff_coefs * mtests/m)/m #alpha - diff_coefs * mtests/m
+
 	full_triplet <- rbind(full_triplet, matrix(plugin_fdr_constraint, nrow=1))
 
 	z_vars <- ncol(full_triplet) #number of binary variables
@@ -270,7 +282,8 @@ ddhw_grouped_milp <- function(unadj_p, groups, alpha, mtests,
 
  		# we also divide the constraint by m (arbitrary) so that the coefficient range of the matrix is not too large
  		# which could cause numerical problems
-		plugin_fdr_constraint2 <- matrix(c(rep(alpha/m,z_vars), -m_groups/m), nrow=1)
+		#plugin_fdr_constraint2 <- matrix(c(rep(alpha/m,z_vars), -m_groups/m), nrow=1)
+		plugin_fdr_constraint2 <- matrix(c(rep(alpha/m/pmax,z_vars), -m_groups/m), nrow=1)
 
 		# put these constraints together..
 		full_triplet <- rbind(full_triplet, ineq_matrix, plugin_fdr_constraint2)
@@ -358,10 +371,22 @@ ddhw_grouped_milp <- function(unadj_p, groups, alpha, mtests,
     bh_rj_inequality <- matrix(c(rep(1, z_vars), rep(0, ncol(full_triplet)-z_vars)), nrow=1)
     full_triplet <- rbind(full_triplet, bh_rj_inequality)
 
+    if (!is.null(rejections_bound)){
+    	full_triplet <- rbind(full_triplet, -bh_rj_inequality)
+    }
+
     nrows <- nrow(full_triplet)
     model_rhs <- c(rep(0,nrows-1), bh_rejections)
-    model_vtype <- c(rep('B', z_vars), rep('C', ncol(full_triplet)-z_vars))
 
+    if (!is.null(rejections_bound)){
+    	model_rhs <- c(rep(0,nrows-2), -rejections_bound)
+    }
+   
+    if (lp_relaxation){
+    	model_vtype <- rep('C', ncol(full_triplet))
+    } else {
+    	model_vtype <- c(rep('B', z_vars), rep('C', ncol(full_triplet)-z_vars))
+    }
     # model ub will actually depend on which penalty we choose
     # model ub = 1 for binary variables, 1 for thresholds, x for f_g, where
     # x=2 for total variation, x=2*m for uniform deviation
@@ -413,9 +438,9 @@ ddhw_grouped_milp <- function(unadj_p, groups, alpha, mtests,
 		# turns out that enforcing T_g >= t_g is numerically very hard in the context of this problem
 
 		params <- list(NumericFocus=3, FeasibilityTol=10^(-9), ScaleFlag=0 , Quad=1, IntFeasTol=10^(-9),
-							OutputFlag = 0, 
+							OutputFlag = 0, #Presolve=0,#10, 
 							Threads=threads,MIPFocus=MIPFocus,
-							MIPGap = mip_gap,  ResultFile='buggy_model.mps')
+							MIPGap = mip_gap)
 
 		if (is.finite(time_limit)) params$TimeLimit <- time_limit
 		if (is.finite(node_limit)) params$NodeLimit <- node_limit
@@ -479,7 +504,9 @@ ddhw_grouped_milp <- function(unadj_p, groups, alpha, mtests,
 				t_thresholds*m/sum(m_groups*t_thresholds) #might need adjustment if mtests > m
 			}
 
-	list(ts = t_thresholds1, ws = ws, solver_information = list(solver=solver, solver_status = solver_status))
+	t_thresholds <- t_thresholds*pmax
+
+	list(ts = t_thresholds, ws = ws, solver_information = list(solver=solver, solver_status = solver_status))
 }
 
 
@@ -651,7 +678,8 @@ model_selection <- function(ddhw_obj){
 
 # determines number of bins and regularization parameter automatically, returns appropriate output
 ddhw_auto <- function(unadj_p, filterstat, alpha, holdout_selection = F, 
-		nbins="auto", parametric_reps=10, resampling="nonparametric lfdr",...){
+		nbins="auto", parametric_reps=10, resampling="nonparametric lfdr",
+		lfdr_estimate=F, ...){
 	# some heuristic rule for determining number of bins
 	if (nbins=="auto") nbins <- max(min(20, floor(length(unadj_p)/1000)), 1)
 	
@@ -710,7 +738,7 @@ ddhw_auto <- function(unadj_p, filterstat, alpha, holdout_selection = F,
 	# instead be less greedy: use regularization_term from above example and try it with that
 	# if it does not work, revert to lambda = 0
 
-	if ((parametric_reps >0)){ #&& reg_pars[1]	 > 0){
+	if ((parametric_reps >0 || lfdr_estimate)){ #&& reg_pars[1]	 > 0){
 
 		if (resampling=="beta-uniform"){
 	    	covmod_fit<- covmod(unadj_p, filterstat, nbins)
@@ -718,49 +746,68 @@ ddhw_auto <- function(unadj_p, filterstat, alpha, holdout_selection = F,
 	    	lfdr_fit_obj <- lfdr_fit(unadj_p, groups_factor(ddhw_full))
 	    }
 
-	    sims <- list()
+	    if (!lfdr_estimate){
+	    	sims <- list()
 
-	    for (i in 1:parametric_reps){
-    		if (resampling=="beta-uniform"){
-	    		sims[[i]] <- simulate(covmod_fit)
-	    	} else if (resampling=="nonparametric lfdr"){
-	    		sims[[i]] <- with(lfdr_fit_obj, lfdr_sim(pvalue, lfdr, group))
+	    	for (i in 1:parametric_reps){
+    			if (resampling=="beta-uniform"){
+	    			sims[[i]] <- simulate(covmod_fit)
+	    		} else if (resampling=="nonparametric lfdr"){
+	    			sims[[i]] <- with(lfdr_fit_obj, lfdr_sim(pvalue, lfdr, group))
+	    		}
 	    	}
-	    }
 
-    	#FDP <- matrix(NA, parametric_reps, length(reg_pars))
+    		#FDP <- matrix(NA, parametric_reps, length(reg_pars))
 
-    	for (j in rev(seq_along(reg_pars))){
-    		FDP <- rep(NA, parametric_reps)
-    		reg_par <- reg_pars[j]
-    		print(paste("par",reg_par))
+    		for (j in rev(seq_along(reg_pars))){
+    			FDP <- rep(NA, parametric_reps)
+    			reg_par <- reg_pars[j]
+    			print(paste("par",reg_par))
 
-    		for (i in 1:parametric_reps){
-    			sim <- sims[[i]]
-    			ddhw_param <- ddhw(sim$pvalue, sim$group, nbins, 
-    					alpha, regularization_term=reg_par, ...)
-    			tmp_idx <- adj_pvalues(ddhw_param) <= alpha
-    			print(paste("rejections:", sum(tmp_idx)))
- 				FDP[i] <- ifelse(sum(tmp_idx) == 0, 0,
+    			for (i in 1:parametric_reps){
+    				sim <- sims[[i]]
+    				ddhw_param <- ddhw(sim$pvalue, sim$group, nbins, 
+    						alpha, regularization_term=reg_par, ...)
+    				tmp_idx <- adj_pvalues(ddhw_param) <= alpha
+    				print(paste("rejections:", sum(tmp_idx)))
+ 					FDP[i] <- ifelse(sum(tmp_idx) == 0, 0,
  								mean(1-sim$H[tmp_idx]))
+ 				}
+ 				# should not have NAs :(
+ 				if (any(is.na(FDP))) warning("NAs!!")
+ 					FDR <- mean(FDP, na.rm=T)
+ 					print(FDR)
+ 				if (FDR < alpha){
+ 					break
+ 				} else {
+ 					reg_par <- 0
+ 				}
  			}
- 			# should not have NAs :(
- 			if (any(is.na(FDP))) warning("NAs!!")
- 			FDR <- mean(FDP, na.rm=T)
- 			print(FDR)
- 			if (FDR < alpha){
- 				break
- 			} else {
- 				reg_par <- 0
- 			}
+ 		} else if (lfdr_estimate) {
+ 			for (j in rev(seq_along(reg_pars))){
+ 				reg_par <- reg_pars[j]
+ 				ddhw_param <- ddhw(unadj_p, filterstat, nbins, 
+    						alpha, regularization_term=reg_par, ...)
+ 				if (rejections(ddhw_param) > 0){
+ 					FDR <- mean(lfdr_fit_obj$lfdr[adj_pvalues(ddhw_param) <= alpha])
+ 					if (FDR < alpha) {
+ 						break
+ 					} else {
+ 						reg_par <- 0
+ 					}
+ 				}else{
+ 					break
+ 				}
+ 			}	
  		}
+ 	}
 
 
  		#FDR <- colMeans(FDP, na.rm=T) #find out why occasionally get NA..
  		#print(FDR)
  		#FDR_sd <- apply(FDP, 2, sd, na.rm=T)
  		#reg_par <- ifelse(FDR <= alpha, reg_par, 0)
-	}
+	
 	
 	#return(list(FDR=FDR,FDR_sd=FDR_sd))
 	print(reg_par)
@@ -771,15 +818,44 @@ ddhw_auto <- function(unadj_p, filterstat, alpha, holdout_selection = F,
 	# return final result with 0.1..
 }
 
-lfdr_fit <- function(pvalue, group){
-  				pvals_list <- split(pvalue, group)
-  				lfdr_list <- lapply(pvals_list, function(pv) fdrtool(pv,
-  									 statistic="pvalue",plot=F,verbose=F)$lfdr)
-  				pvals <- unsplit(pvals_list, group)
-  				lfdrs <- unsplit(lfdr_list, group)
-  				fit_obj <- data.frame(pvalue=pvals, lfdr=lfdrs, group=group)
-  				fit_obj
-			}
+lfdr_fit <- function(unadj_p, group, lfdr_estimation="fdrtool"){
+	if (lfdr_estimation == "covmod"){
+		lfdrs <- covmod_grouped(unadj_p, group)$cm_fdr
+	} else {
+
+  		pvals_list <- split(unadj_p, group)
+  		if (lfdr_estimation == "fdrtool"){
+  			lfdr_fun <- function(pv) fdrtool(pv, statistic="pvalue",plot=F,verbose=F)$lfdr
+  		} else if (lfdr_estimation == "ConcaveFDR"){
+			lfdr_fun <- function(pv) ConcaveFDR(pv, statistic="pvalue",plot=F,verbose=F)$lfdr.log
+  		} else if (lfdr_estimation == "locfdr"){
+  			lfdr_fun <- function(pv) locfdr(qnorm(pv), nulltype=0, plot=0)$fdr
+  		} else if (lfdr_estimation == "mixfdr"){
+  	  		lfdr_fun <- function(pv) mixFdr(qnorm(pv), theonull=T, plots=F)$fdr
+  		}
+  	
+  		lfdr_list <- lapply(pvals_list, lfdr_fun) 
+  		lfdrs <- unsplit(lfdr_list, group)
+  	}
+  	fit_obj <- data.frame(pvalue=unadj_p, lfdr=lfdrs, group=group)
+  	fit_obj
+}
+
+cai_bh <- function(unadj_p, filterstat, nbins, alpha, ...){
+	grps <- groups_by_filter(filterstat,nbins)
+	lfdr_res <- lfdr_fit(unadj_p, grps, ...)
+	lfdrs <- lfdr_res$lfdr
+	# sort lfdrs, break ties by pvalues so that in the end within each stratum
+	# we get monotonic adjusted p-values as a function of the p-values
+	# this is mainly needed for grenander based lfdrs
+	o <- order(lfdrs, unadj_p)
+	lfdrs_sorted <- lfdrs[o]
+	fdr_estimate <- cumsum(lfdrs_sorted)/(1:length(unadj_p))
+	adj_p <- rev(cummin(rev(fdr_estimate)))
+	adj_p[order(o)]
+}
+
+
 
 lfdr_sim <- function(pvalue, lfdr, group){
 	m <- length(pvalue)
@@ -816,3 +892,627 @@ reg_path <- function(unadj_p, filterstat, nbins, alpha, reg_pars,...){
  	rjs_test
 }
 
+crossval_fdr_estimate <- function(unadj_p, groups, alpha, regularization_term=Inf, nreps=10,...){
+
+	m <- length(unadj_p)
+	m_train <- floor(m/2)
+
+	fdr_estimate <- rep(NA,nreps)
+	
+	for (k in 1:nreps){
+		  
+		train_idx <- sample(1:m, floor(m/2))  
+		test_idx  <- setdiff(1:m, train_idx)
+
+		ddhw_obj <- ddhw_grouped(unadj_p[train_idx], groups[train_idx], alpha, 
+						regularization_term=regularization_term, ...)
+		train_rjs <- rejections(ddhw_obj, method="thresholds", groupwise=T)
+		train_ts  <- thresholds(ddhw_obj)
+		#train_ts  <- regularize_thresholds(train_ts, stratum_sizes(ddhw_obj), sum(rjs),alpha, m_train)
+
+  		test_pv_list <- split(unadj_p[test_idx], groups[test_idx])
+  		test_m_groups <- sapply(test_pv_list,length)
+  		
+  		test_rjs <- mapply(function(pv,t) sum(pv <= t), test_pv_list, train_ts)
+  	
+  		test_fdrs <- mapply(my_grenander, test_pv_list, train_ts)
+
+  		if (sum(train_rjs) == 0){
+  			fdr_estimate[k] = 0
+  		} else {
+  			fdr_estimate[k] <- sum(train_rjs*test_fdrs)/sum(train_rjs)
+  		}
+
+  		#if (sum(train_rjs) == 0){
+  		#	print("lol..")
+  		#	fdr_estimate[k] <- 1 # setting this to 1 seems also plausible.
+  		#} else {
+			#fdr_estimate[k] <- sum(train_rjs*pmin(1,(test_m_groups-test_rjs)*train_ts/test_rjs, na.rm=T))/sum(train_rjs)
+		#}
+	}
+
+	fdr_estimate
+	#list(test_m = test_m_groups, test_rjs=test_rjs,  train_rjs=train_rjs, train_ts = train_ts,
+	#	pm = (test_m_groups-test_rjs)*train_ts/test_rjs, fdr_est = fdr_estimate)
+}
+
+
+ddhw_auto2 <- function(unadj_p, filterstat, alpha, pi0="auto",
+		nbins="auto", reg_par_number=7, reg_pars=NULL, nreps=10, sd_penalty=2, ...){
+
+	pi0 <- fdrtool(unadj_p, statistic="pvalue", plot=F, verbose=F)$param[3]
+	print(pi0)
+
+	# some heuristic rule for determining number of bins
+	if (nbins=="auto") nbins <- max(min(20, floor(length(unadj_p)/1000)), 1)
+	
+	# start by optimizing with what amounts to reg par = Infty
+
+	if (is.factor(filterstat)){
+		ddhw_full <- ddhw_grouped(unadj_p, filterstat, alpha, ...)
+		groups <- filterstat
+		nbins <- length(levels(groups))
+		max_reg <- uniform_deviation(weights(ddhw_full))
+
+	} else {
+		ddhw_full <- ddhw(unadj_p, filterstat, nbins, alpha, ...)
+		groups <- groups_by_filter(filterstat, nbins)
+		# determine maximum necessary regularization
+		max_reg <- total_variation(weights(ddhw_full))
+	}
+
+	print(paste("max reg:",max_reg))
+	# for reg_par = 0 to max_reg     (e.g. 10 values?) do the holdout-experiment
+
+	if (is.null(reg_pars)){
+		reg_pars <- seq(0, max_reg, length=reg_par_number)
+	}
+
+	print(max_reg)
+	#reg_pars <- c(0, rev(sapply(1:reg_par_number, function(x) max_reg/2^(x-1))))
+
+	m <- length(unadj_p)
+ 
+	# instead be less greedy: use regularization_term from above example and try it with that
+	# if it does not work, revert to lambda = 0
+
+
+	# generate indices for train/test datasets
+	train_idx_list <- replicate(nreps, sample(1:m, floor(m/2)), simplify=F)
+
+    for (j in rev(seq_along(reg_pars))){
+
+    	fdr_estimate_fold1 <- rep(NA, nreps)
+    	fdr_estimate_fold2 <- rep(NA, nreps)
+
+    	reg_par <- reg_pars[j]
+    	print(paste("par",reg_par))
+
+
+    	for (k in 1:nreps){
+
+			train_idx <- train_idx_list[[k]]
+			test_idx  <- setdiff(1:m, train_idx)
+
+			ddhw_obj <- ddhw_grouped(unadj_p[train_idx], groups[train_idx], alpha, 
+						regularization_term=reg_par, ...)
+
+			train_rjs <- rejections(ddhw_obj, method="thresholds", groupwise=T)
+			train_ts  <- thresholds(ddhw_obj)
+
+			# merge adjacent groups which have the same weights
+			merged_groups <- as.factor(groups)
+			merged_levels <- cumsum(c(0,abs(diff(weights(ddhw_obj))) > .Machine$double.eps))
+			merged_levels_rle <- rle(merged_levels)$lengths
+			levels(merged_groups) <- merged_levels
+			print(length(unique(levels(merged_groups))))
+
+			cnt <- 1
+			train_ts_merged <- c()
+			train_rjs_merged <- c()
+			for (i in seq_along(merged_levels_rle)){
+				new_cnt <- cnt + merged_levels_rle[i]
+				train_ts_merged[i] <- train_ts[cnt]
+				train_rjs_merged[i] <- sum(train_rjs[cnt:(new_cnt-1)])
+				cnt <- new_cnt
+			}
+
+	  		test_pv_list <- split(unadj_p[test_idx], merged_groups[test_idx])
+  			test_m_groups <- sapply(test_pv_list,length)
+  		
+  			#test_rjs <- mapply(function(pv,t) sum(pv <= t), test_pv_list, train_ts)
+  	
+  			## test_fdrs <- mapply(my_grenander, test_pv_list, train_ts_merged)
+			test_fdrs <- mapply(function(pv,t) my_grenander(pv,t,distrib=T), test_pv_list, train_ts_merged, SIMPLIFY=F)
+			test_pi0s <- sapply(test_fdrs, function(x) x$pi_zero)
+			test_distribs <- sapply(test_fdrs, function(x) x$distrib)
+  			
+  			if (sum(train_rjs) == 0){
+  				fdr_estimate_fold1[k] <- 0
+  			} else {
+  				##fdr_estimate_fold1[k] <- sum(train_rjs_merged*test_fdrs)/sum(train_rjs_merged)
+  				fdr_estimate_fold1[k] <- min(1,sum(test_m_groups*test_pi0s*train_ts_merged)/sum(test_m_groups*test_distribs))
+  			}
+
+  			print(fdr_estimate_fold1[k])
+
+			train_idx <- test_idx
+			test_idx  <- train_idx_list[[k]]
+
+			ddhw_obj <- ddhw_grouped(unadj_p[train_idx], groups[train_idx], alpha, 
+						regularization_term=reg_par, ...)
+
+			train_rjs <- rejections(ddhw_obj, method="thresholds", groupwise=T)
+			train_ts  <- thresholds(ddhw_obj)
+
+
+			# merge adjacent groups which have the same weights
+			merged_groups <- as.factor(groups)
+			merged_levels <- cumsum(c(0,abs(diff(weights(ddhw_obj))) > .Machine$double.eps))
+			merged_levels_rle <- rle(merged_levels)$lengths
+			levels(merged_groups) <- merged_levels
+			print(length(unique(levels(merged_groups))))
+
+			cnt <- 1
+			train_ts_merged <- c()
+			train_rjs_merged <- c()
+			for (i in seq_along(merged_levels_rle)){
+				new_cnt <- cnt + merged_levels_rle[i]
+				train_ts_merged[i] <- train_ts[cnt]
+				train_rjs_merged[i] <- sum(train_rjs[cnt:(new_cnt-1)])
+				cnt <- new_cnt
+			}
+
+	  		test_pv_list <- split(unadj_p[test_idx], merged_groups[test_idx])
+  			test_m_groups <- sapply(test_pv_list,length)
+  		
+  			#test_rjs <- mapply(function(pv,t) sum(pv <= t), test_pv_list, train_ts)
+  	
+  			##test_fdrs <- mapply(my_grenander, test_pv_list, train_ts_merged)
+			test_fdrs <- mapply(function(pv,t) my_grenander(pv,t,distrib=T), test_pv_list, train_ts_merged,SIMPLIFY=F)
+			test_pi0s <- sapply(test_fdrs, function(x) x$pi_zero)
+			test_distribs <- sapply(test_fdrs, function(x) x$distrib)
+  			if (sum(train_rjs) == 0){
+  				fdr_estimate_fold2[k] = 0
+  			} else {
+  				##fdr_estimate_fold2[k] <- sum(train_rjs_merged*test_fdrs)/sum(train_rjs_merged)
+  				fdr_estimate_fold2[k] <- min(1,sum(test_m_groups*test_pi0s*train_ts_merged)/sum(test_m_groups*test_distribs))
+
+  			}
+
+  			print(fdr_estimate_fold2[k])
+
+  		}
+  		
+  		fdr_estimate <- c(fdr_estimate_fold1,fdr_estimate_fold2)
+  		print(paste("mean", mean(fdr_estimate,na.rm=T)))
+  		print(mean(fdr_estimate,na.rm=T) + sd_penalty*sd(fdr_estimate,na.rm=T)/sqrt(nreps) )
+  		# hacky way to deal with NA's that ocassionally pop up :( -> need to check this..(thought it was fixed)
+  		decision_bool <- mean(fdr_estimate,na.rm=T) + sd_penalty*sd(fdr_estimate,na.rm=T)/sqrt(nreps) <= pi0*alpha
+
+  		if (!is.na(decision_bool) && class(decision_bool) == "logical" && decision_bool){
+ 			break
+ 		} else {
+ 			reg_par <- 0
+ 		}
+	}
+
+    reg_path_df <- data.frame()
+	
+	#return(list(FDR=FDR,FDR_sd=FDR_sd))
+	print(reg_par)
+
+	if (is.factor(filterstat)){
+		ddhw_obj <- ddhw_grouped(unadj_p, filterstat, alpha, regularization_term=reg_par, ...)
+
+	} else {
+		ddhw_obj <- ddhw(unadj_p, filterstat, nbins, alpha, regularization_term=reg_par, ...)
+	}
+
+	reg_path_information(ddhw_obj) <- reg_path_df
+	ddhw_obj
+	# return final result with 0.1..
+}
+
+
+ddhw_auto3 <- function(unadj_p, filterstat, alpha, 
+		nbins="auto", nbins_check="auto", reg_par_number=7, reg_pars=NULL, nreps=10, sd_penalty=2, ...){
+
+	pi0 <- fdrtool(unadj_p, statistic="pvalue", plot=F, verbose=F)$param[3]
+	# some heuristic rule for determining number of bins
+	if (nbins=="auto") nbins <- max(min(20, floor(length(unadj_p)/2000)), 1)
+	if (nbins_check=="auto") nbins_check <- max(min(20, floor(length(unadj_p)/2000)), 1)
+
+	# start by optimizing with what amounts to reg par = Infty
+	ddhw_full <- ddhw(unadj_p, filterstat, nbins_check, alpha, ...)
+	groups <- groups_by_filter(filterstat, nbins)
+	# determine maximum necessary regularization
+	max_reg <- 4*total_variation(weights(ddhw_full))
+
+	print(paste("max reg:",max_reg))
+	# for reg_par = 0 to max_reg     (e.g. 10 values?) do the holdout-experiment
+
+	if (is.null(reg_pars)){
+		reg_pars <- seq(0, max_reg, length=reg_par_number)
+	}
+
+	print(max_reg)
+	#reg_pars <- c(0, rev(sapply(1:reg_par_number, function(x) max_reg/2^(x-1))))
+
+	m <- length(unadj_p)
+ 
+	# instead be less greedy: use regularization_term from above example and try it with that
+	# if it does not work, revert to lambda = 0
+
+
+	# generate indices for train/test datasets
+	train_idx_list <- replicate(nreps, sample(1:m, floor(m/2)), simplify=F)
+
+    for (j in rev(seq_along(reg_pars))){
+
+    	fdr_estimate_fold1 <- rep(NA, nreps)
+    	fdr_estimate_fold2 <- rep(NA, nreps)
+
+    	reg_par <- reg_pars[j]
+    	print(paste("par",reg_par))
+
+
+    	for (k in 1:nreps){
+
+			train_idx <- train_idx_list[[k]]
+			test_idx  <- setdiff(1:m, train_idx)
+
+			ddhw_obj <- ddhw(unadj_p[train_idx], filterstat[train_idx], nbins, alpha, 
+						regularization_term=reg_par, ...)
+
+			train_rjs <- rejections(ddhw_obj, method="thresholds", groupwise=T)
+			train_ts  <- thresholds(ddhw_obj, levels_only=F)
+			train_ts_fun <- approxfun(rank(filterstat[train_idx]), train_ts, method="linear",rule=2)
+
+
+  			test_pv_list <- split(unadj_p[test_idx], groups_by_filter(filterstat[test_idx],nbins_check))
+  			test_filter_list <- split(rank(filterstat[test_idx]), groups_by_filter(filterstat[test_idx],nbins_check))
+  			test_m_groups <- sapply(test_pv_list,length)
+  		
+  			#test_rjs <- mapply(function(pv,t) sum(pv <= t), test_pv_list, train_ts)
+  			##test_fdrs <- mapply(my_grenander, test_pv_list, train_ts_merged)
+			test_fdrs <- mapply(function(pv,t) my_grenander(pv,t,distrib=T), test_pv_list, 1,SIMPLIFY=F)
+			test_pi0s <- sapply(test_fdrs, function(x) x$pi_zero)
+			test_distrib_funs <- sapply(test_fdrs, function(x) x$distrib_fun)
+
+			summed_ts <- sapply(test_filter_list, function(fs) sum(train_ts_fun(fs)))
+			summed_Fts <- mapply(function(fs,fun) sum(fun(train_ts_fun(fs))), test_filter_list, test_distrib_funs)
+
+  			if (sum(train_rjs) == 0){
+  				fdr_estimate_fold1[k] = 0
+  			} else {
+  				fdr_estimate_fold1[k] <- min(1,sum(test_pi0s*summed_ts)/sum(summed_Fts))
+  			}
+
+
+
+  			print(fdr_estimate_fold1[k])
+
+			train_idx <- test_idx
+			test_idx  <- train_idx_list[[k]]
+
+			ddhw_obj <- ddhw(unadj_p[train_idx], filterstat[train_idx], nbins,alpha, 
+						regularization_term=reg_par, ...)
+
+			
+			train_rjs <- rejections(ddhw_obj, method="thresholds", groupwise=T)
+			train_ts  <- thresholds(ddhw_obj, levels_only=F)
+			train_ts_fun <- approxfun(rank(filterstat[train_idx]), train_ts, method="linear",rule=2)
+
+
+  			test_pv_list <- split(unadj_p[test_idx], groups_by_filter(filterstat[test_idx],nbins_check))
+  			test_filter_list <- split(rank(filterstat[test_idx]), groups_by_filter(filterstat[test_idx],nbins_check))
+  			test_m_groups <- sapply(test_pv_list,length)
+  		
+  			#test_rjs <- mapply(function(pv,t) sum(pv <= t), test_pv_list, train_ts)
+  			##test_fdrs <- mapply(my_grenander, test_pv_list, train_ts_merged)
+			test_fdrs <- mapply(function(pv,t) my_grenander(pv,t,distrib=T), test_pv_list, 1,SIMPLIFY=F)
+			test_pi0s <- sapply(test_fdrs, function(x) x$pi_zero)
+			test_distrib_funs <- sapply(test_fdrs, function(x) x$distrib_fun)
+
+			summed_ts <- sapply(test_filter_list, function(fs) sum(train_ts_fun(fs)))
+			summed_Fts <- mapply(function(fs,fun) sum(fun(train_ts_fun(fs))), test_filter_list, test_distrib_funs)
+
+  			if (sum(train_rjs) == 0){
+  				fdr_estimate_fold2[k] = 0
+  			} else {
+  				fdr_estimate_fold2[k] <- min(1,sum(test_pi0s*summed_ts)/sum(summed_Fts))
+  			}
+
+  			print(fdr_estimate_fold2[k])
+
+  		}
+  		
+  		fdr_estimate <- (fdr_estimate_fold1 + fdr_estimate_fold2)/2
+  		print(paste("mean", mean(fdr_estimate,na.rm=T)))
+  		print(mean(fdr_estimate,na.rm=T) + sd_penalty*sd(fdr_estimate,na.rm=T)/sqrt(nreps) )
+  		# hacky way to deal with NA's that ocassionally pop up :( -> need to check this..(thought it was fixed)
+  		decision_bool <- mean(fdr_estimate,na.rm=T) + sd_penalty*sd(fdr_estimate,na.rm=T)/sqrt(nreps) <= pi0
+
+  		if (!is.na(decision_bool) && class(decision_bool) == "logical" && decision_bool){
+ 			break
+ 		} else {
+ 			reg_par <- 0
+ 		}
+	}
+
+    reg_path_df <- data.frame()
+	
+	#return(list(FDR=FDR,FDR_sd=FDR_sd))
+	print(reg_par)
+
+	ddhw_obj <- ddhw(unadj_p, filterstat, nbins, alpha, regularization_term=reg_par, ...)
+	reg_path_information(ddhw_obj) <- reg_path_df
+	ddhw_obj
+	# return final result with 0.1..
+}
+
+
+
+ddhw_unstratified <- function(unadj_p, filter_statistic, lambda, alpha, optim_pval_threshold=0.1){
+	mfull <- length(unadj_p)
+
+
+	o <- order(filter_statistic)
+    ro <- order(o)
+
+
+    pvals <- unadj_p[o]
+    filterstats <- filter_statistic[o]
+
+    #idx <- which(pvals > optim_pval_threshold)
+    #rj_idx <- which(pvals <= alpha/mfull) #make sure bonferroni rejected p-values get rejected globally
+  
+
+
+    # start constructing LP
+
+    rle_enc <- rle(ifelse(pvals > optim_pval_threshold, -1, pvals))
+    rle_idx <- cumsum(rle_enc$lengths)
+    m <- length(rle_enc$values)
+    ignored_idx <- which(rle_enc$values == -1) #pvals which will not get rejected anyway
+    rj_idx      <- which(rle_enc$values <= alpha/mfull) #pvals which will get rejected for sure
+    # first only the main problem
+    row_idx <- c(1:m, 1:m)
+    col_idx <- c(1:(2*m))
+    #coef_val <- c(-pvals, rep(1,m))
+    coef_val <- c(-rle_enc$values, rep(1,m))
+
+    #print(paste(length(row_idx), length(col_idx), length(coef_val)))
+	coef_mat <- slam::simple_triplet_matrix(row_idx,col_idx,coef_val)
+	#fdr_constr <- matrix(c(rep(alpha,m), rep(-1,m)),nrow=1)
+	fdr_constr <- matrix(c(rep(alpha,m), -1*rle_enc$lengths),nrow=1)
+
+	coef_mat <- rbind(coef_mat,fdr_constr)
+
+
+	 # Ok now we also unfortunately need the regularization, i.e. introduce m-1 new terms
+	coef_mat <- cbind(coef_mat,
+	 				slam::simple_triplet_zero_matrix(m+1, m-1 ,mode="double"))
+
+
+	 				# constraints f_i >= t(i+1) - t_i
+	 				# first set: t_i
+	 				# second set: t_(i+1)
+	 				# third set: f_i
+	new_row_idx <- c(1:(m-1), 1:(m-1), 1:(m-1))
+	new_col_idx <- c((m+1):(2*m-1), (m+2):(2*m), (2*m+1):(3*m-1)) 
+	new_coef_val <- c(rep(-1, m-1), rep(1,m-1), rep(1,m-1))
+
+	#print("2")
+	coef_half <- slam::simple_triplet_matrix(new_row_idx, new_col_idx, new_coef_val)
+ 
+	new_coef_val2 <- c(rep(1, m-1), rep(-1,m-1), rep(1,m-1))
+	coef_half2 <- slam::simple_triplet_matrix(new_row_idx, new_col_idx, new_coef_val2)
+
+
+	final_constr <- matrix(c(rep(0,m), rep(lambda/m, m), rep(-1,m-1)),nrow=1)
+
+	coef_mat <- rbind(coef_mat, coef_half, coef_half2, final_constr)
+
+	obj <- c(rep(1,m), rep(0, 2*m-1))
+	model_ub <- c(rep(1, 2*m), rep(2,m-1))
+	#model_ub[idx] <- 0
+	model_ub[ignored_idx] <- 0
+
+	model_lb <- rep(0, 3*m-1)
+	#model_lb[rj_idx] <- 1
+	#require("gurobi")
+	#require("Matrix")
+
+	# convert simple_triplet_matrix of pkg Slam to sparse matrix of pkg Matrix
+	# gurobi has problems with simple_triplet_matrix for an (undocumented) reason (?bug)
+	#coef_mat <-  sparseMatrix(i=coef_mat$i, j=coef_mat$j, x=coef_mat$v,
+     #      dims=c(coef_mat$nrow, coef_mat$ncol))
+
+	#model <- list()
+	#model$A <- coef_mat
+	#model$obj <- obj
+	#model$modelsense <- "max"
+	#model$rhs        <- 0
+	#model$lb         <- model_lb
+	#model$ub         <- model_ub
+	#model$sense      <- '>'
+	#model$vtype      <- model_vtype
+
+
+		#params <- list(ScaleFlag=0 ,
+		#					OutputFlag = 0)#, TimeLimit=10)
+		
+		#res <- gurobi(model, params)
+		#print( str(res ))
+
+		rsymphony_ub <- list(upper = list(ind = 1:ncol(coef_mat), val = model_ub))
+
+		#if (is.infinite(time_limit)) time_limit <- -1
+		#if (is.infinite(node_limit)) node_limit <- -1
+		res<- Rsymphony::Rsymphony_solve_LP(obj, coef_mat, rep(">=", nrow(coef_mat)), 
+				rep(0, nrow(coef_mat)),
+    			bounds= rsymphony_ub,
+				max = T, verbosity = 2)
+		sol <- res$solution
+		#solver_status <- res$status
+
+		#ts <- res$x[(m+1):(2*m)]
+		ts <- sol[(m+1):(2*m)]
+		rle_enc$values <- ts
+		ts <- inverse.rle(rle_enc)
+		ws <- thresholds_to_weights_full(ts)
+
+		ts <- ts[ro]
+		ws <- ws[ro]
+
+		# linear interpolation
+		# outside observed range use same values
+
+		weighted_pvalues <- mydiv(unadj_p, ws)
+		ts_corrected <- ws*get_bh_threshold(weighted_pvalues, alpha)
+
+		ts_fun <- approxfun(filterstats, ts_corrected, method="linear",rule=2)
+
+		adj_pv <- p.adjust(weighted_pvalues,method="BH")
+		return(list(lambda=lambda, res=res,ts=ts,ws=ws, ts_corrected=ts_corrected,
+			filterstats=filterstats, rjs=sum(adj_pv <= alpha), ts_fun=ts_fun))
+		#sol <- res$x		#solver_status <- res$status
+
+}
+
+ddhw_unstratified_path <- function(unadj_p, filter_statistic, reg_pars, alpha, nreps=10, ...){
+# generate indices for train/test datasets
+
+	m <- length(unadj_p)
+	nbins <- floor(m/1000)
+	train_idx_list <- replicate(nreps, sample(1:m, floor(m/2)), simplify=F)
+
+    for (j in rev(seq_along(reg_pars))){
+
+    	fdr_estimate_fold1 <- rep(NA, nreps)
+    	fdr_estimate_fold2 <- rep(NA, nreps)
+
+    	reg_par <- reg_pars[j]
+    	print(paste("par",reg_par))
+
+
+    	for (k in 1:nreps){
+
+			train_idx <- train_idx_list[[k]]
+			test_idx  <- setdiff(1:m, train_idx)
+
+			# probably could pre-sort to save some time
+			ddhw_obj <- ddhw_unstratified(unadj_p[train_idx], filter_statistic[train_idx], reg_par, alpha, ...)
+
+			train_rjs <- ddhw_obj$rjs
+			train_ts_fun <- ddhw_obj$ts_fun
+
+
+  			test_pv_list <- split(unadj_p[test_idx], groups_by_filter(filter_statistic[test_idx],nbins))
+  			test_filter_list <- split(filter_statistic[test_idx], groups_by_filter(filter_statistic[test_idx],nbins))
+  			test_m_groups <- sapply(test_pv_list,length)
+  		
+  			#test_rjs <- mapply(function(pv,t) sum(pv <= t), test_pv_list, train_ts)
+  			##test_fdrs <- mapply(my_grenander, test_pv_list, train_ts_merged)
+			test_fdrs <- mapply(function(pv,t) my_grenander(pv,t,distrib=T), test_pv_list, 1,SIMPLIFY=F)
+			test_pi0s <- sapply(test_fdrs, function(x) x$pi_zero)
+			test_distrib_funs <- sapply(test_fdrs, function(x) x$distrib_fun)
+
+			summed_ts <- sapply(test_filter_list, function(fs) sum(train_ts_fun(fs)))
+			summed_Fts <- mapply(function(fs,fun) sum(fun(train_ts_fun(fs))), test_filter_list, test_distrib_funs)
+
+  			if (sum(train_rjs) == 0){
+  				fdr_estimate_fold1[k] = 0
+  			} else {
+  				fdr_estimate_fold1[k] <- min(1,sum(test_pi0s*summed_ts)/sum(summed_Fts))
+  			}
+
+
+  			#test_ts <- train_ts_fun(filter_statistic[test_idx])
+  			#test_rjs <- sum(unadj_p[test_idx] <= test_ts)
+  	
+  			#print(paste("train_rjs:",train_rjs,"   test_rjs:",test_rjs))
+  			
+  			#if (train_rjs == 0){
+  			#	fdr_estimate_fold1[k] <- 0
+  			#} else {
+  			#	fdr_estimate_fold1[k] <- min(1, sum(test_ts)/test_rjs)
+  			#}
+
+  			print(fdr_estimate_fold1[k])
+
+			train_idx <- test_idx
+			test_idx  <- train_idx_list[[k]]
+
+			# probably could pre-sort to save some time
+			ddhw_obj <- ddhw_unstratified(unadj_p[train_idx], filter_statistic[train_idx], reg_par, alpha, ...)
+
+			train_rjs <- ddhw_obj$rjs
+			train_ts_fun <- ddhw_obj$ts_fun
+
+
+  			#test_ts <- train_ts_fun(filter_statistic[test_idx])
+  			#test_rjs <- sum(unadj_p[test_idx] <= test_ts)
+  	
+
+  			
+  			#if (train_rjs == 0){
+  			#	fdr_estimate_fold2[k] <- 0
+  			#} else {
+  			#	fdr_estimate_fold2[k] <- min(1, sum(test_ts)/test_rjs)
+  			#}
+
+
+  			test_pv_list <- split(unadj_p[test_idx], groups_by_filter(filter_statistic[test_idx],nbins))
+  			test_filter_list <- split(filter_statistic[test_idx], groups_by_filter(filter_statistic[test_idx],nbins))
+  			test_m_groups <- sapply(test_pv_list,length)
+  		
+  			#test_rjs <- mapply(function(pv,t) sum(pv <= t), test_pv_list, train_ts)
+  	
+  			##test_fdrs <- mapply(my_grenander, test_pv_list, train_ts_merged)
+			test_fdrs <- mapply(function(pv,t) my_grenander(pv,t,distrib=T), test_pv_list, 1,SIMPLIFY=F)
+			test_pi0s <- sapply(test_fdrs, function(x) x$pi_zero)
+			test_distrib_funs <- sapply(test_fdrs, function(x) x$distrib_fun)
+
+			summed_ts <- sapply(test_filter_list, function(fs) sum(train_ts_fun(fs)))
+			summed_Fts <- mapply(function(fs,fun) sum(fun(train_ts_fun(fs))), test_filter_list, test_distrib_funs)
+  			if (sum(train_rjs) == 0){
+  				fdr_estimate_fold2[k] = 0
+  			} else {
+  				##fdr_estimate_fold2[k] <- sum(train_rjs_merged*test_fdrs)/sum(train_rjs_merged)
+  				fdr_estimate_fold2[k] <- min(1,sum(test_pi0s*summed_ts)/sum(summed_Fts))
+
+  			}
+
+
+  			print(fdr_estimate_fold2[k])
+
+  		}
+  		
+  		fdr_estimate <- (fdr_estimate_fold1 + fdr_estimate_fold2)/2
+  		print(paste("mean", mean(fdr_estimate,na.rm=T)))
+  		#print(mean(fdr_estimate,na.rm=T) + sd_penalty*sd(fdr_estimate,na.rm=T)/sqrt(nreps) )
+  		# hacky way to deal with NA's that ocassionally pop up :( -> need to check this..(thought it was fixed)
+  		decision_bool <- mean(fdr_estimate,na.rm=T)  <= alpha#+ sd_penalty*sd(fdr_estimate,na.rm=T)/sqrt(nreps) <= alpha
+
+  		if (!is.na(decision_bool) && class(decision_bool) == "logical" && decision_bool){
+ 			break
+ 		} else {
+ 			reg_par <- 0
+ 		}
+	}
+
+    #reg_path_df <- data.frame()
+	
+	#return(list(FDR=FDR,FDR_sd=FDR_sd))
+	print(reg_par)
+
+	ddhw_unstratified(unadj_p, filter_statistic, reg_par, alpha, ...)
+
+	#ddhw_obj <- ddhw(unadj_p, filterstat, nbins, alpha, regularization_term=reg_par, ...)
+	#reg_path_information(ddhw_obj) <- reg_path_df
+	#ddhw_obj
+	# return final result with 0.1..
+}
