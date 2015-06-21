@@ -30,21 +30,20 @@ dds$condition <- factor(dds$condition,
                             levels=c("untreated","treated"))
 dds <- DESeq(dds)
 dds <- results(dds)
-pasilla <-subset(dds, !is.na(pvalue))
+pasilla <-subset(dds, !is.na(pvalue)) #No support for NAs yet
+
 ```
 
-Apply multiple testing using DDHW (symphony + gurobi) and BH:
+
+Apply multiple testing using DDHW and compare to BH.
 
 ```{r}
-res_symphony <- ddhw(pasilla$pvalue,pasilla$baseMean, 10, 0.1, solver="Rsymphony")
+res_symphony <- ddhw_auto(pasilla$pvalue,pasilla$baseMean, 0.1, solver="Rsymphony", lp_relaxation=F)
 
-library("gurobi")
-res_gurobi <- ddhw(pasilla$pvalue, pasilla$baseMean, 10, 0.1, solver="gurobi")
+weights(res_symphony)
 
 rejections(res_symphony)
-rejections(res_gurobi)
 
-#benjamini hochberg
 sum(p.adjust(pasilla$pvalue, method="BH") <= .1)
 ```
 

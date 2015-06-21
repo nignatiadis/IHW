@@ -1,3 +1,16 @@
+#' An S4 class to represent the DDHW output.
+#'
+#' @slot df  A data frame which collects the input data such as the vector of p values and the filter statistics, the group assignment, as well as outputs (weighted p-values, adjusted p-values)
+#' @slot weights  A numeric vector of the weight assigned to each stratum
+#' @slot thresholds  A numeric vector of the rejection threshold for each stratum
+#' @slot alpha   Numeric, the nominal significance level at which the FDR is to be controlled
+#' @slot regularization_term Numeric, the value of the regularization parameter after the cross-val choice
+#' @slot penalty  Character, "uniform deviation" or "total variation"
+#' @slot reg_path_information  Information about the whole regularization path. !NOT implemented yet
+#' @slot solver_information  Solver specific output, e.g. was the problem solved to optimality?
+#'
+#' @seealso \code{\link{weights.ddhw}}, \code{\link{thresholds.ddhw}}, \code{\link{rejections.ddhw}}, \code{\link{adj_pvalues.ddhw}} 
+
 setClass("ddhw",
          	slots = list(
            		df = "data.frame",
@@ -58,7 +71,9 @@ setMethod("groups_factor", signature(object="ddhw"),
           groups_factor.ddhw)
 
 
-################### weights #################################################
+#' weights: Accessor function for ddhw weights
+#'
+#' @param levels_only If T return 1 weights per stratum, otherwise return a vector of weights of the same length as the original vector of p--values
 weights.ddhw <-function(object, levels_only = T){
 	if (levels_only) {
 		object@weights
@@ -79,16 +94,17 @@ setReplaceMethod("weights", signature(object="ddhw", value="numeric"),
                   	object
                  })
 
-################### alpha #################################################
+#' ddhw Accessor function for alpha
 alpha.ddhw <-function(object) object@alpha
-
 setGeneric("alpha", function(object,value) standardGeneric("alpha"))
 
 setMethod("alpha", signature(object="ddhw"),
           alpha.ddhw)
 
 
-################### thresholds #################################################
+#' ddhw Accessor function for ddhw thresholds
+#'
+#' @param levels_only If T return 1 threshold per stratum, otherwise return a vector of thresholds of the same length as the original vector of p--values
 thresholds.ddhw <-function(object, levels_only = T){
 	if (levels_only) {
 		object@thresholds
@@ -114,7 +130,7 @@ setGeneric("pvalues", function(object,value) standardGeneric("pvalues"))
 setMethod("pvalues", signature(object="ddhw"),
           pvalues.ddhw)
 
-##########     adjusted pvalues   ###############################################
+#' ddhw Accessor function for adjusted p values
 adj_pvalues.ddhw <- function(object){
 	object@df$adj_p
 }
@@ -125,7 +141,9 @@ setGeneric("adj_pvalues", function(object,value) standardGeneric("adj_pvalues"))
 setMethod("adj_pvalues", signature(object="ddhw"),
           adj_pvalues.ddhw)
 
-########## rejections ###################################################
+#' Get number of rejections by DDHW
+#'
+#' @param groupwise If F returns an integer (total number of rejections), if T return rejections within each stratum
 rejections.ddhw <- function(object, method="adjpvals", groupwise=F){
 	groups <- groups_factor(object)
 
@@ -198,3 +216,15 @@ stratum_sizes <- function(object) table(groups_factor(object))
 setValidity( "ddhw", function( object ) {
 	return(TRUE)
 } )
+
+
+
+per_bin_fdrs <- function(obj) {
+  ts <- thresholds(obj)
+  groups <- groups_factor(obj)
+  pvals <- pvalues(obj)
+  pv_list <- split(pvals, groups)
+  print(sapply(pv_list,length))
+  fdrs <- mapply(function(t,pvec) length(pvec)*t/max(1, sum(pvec <= t)), ts, pv_list)
+  return(fdrs)
+}

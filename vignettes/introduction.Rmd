@@ -1,5 +1,5 @@
 ---
-title: "Introduction to ddhw"
+title: "DDHW on a simple simulation"
 author: "N. Ignatiadis"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
@@ -9,36 +9,33 @@ vignette: >
   %\usepackage[utf8]{inputenc}
 ---
 
-
-```{r}
-library("DESeq2")
-```
-
-```{r}
-library("airway")
-data("airway")
-dds <- DESeqDataSet(se = airway, design = ~ cell + dex)
-dds <- DESeq(dds)
-dds <- results(dds)
-dds <-subset(dds, !is.na(pvalue))
-```
-
-First we perform our ddhw-testing procedure using the MILP formulation:
 ```{r}
 library("ddhw")
-res_milp <- ddhw(dds$pvalue,dds$baseMean, 10, 0.1)
-weights(res_milp)
-sum(adj_pvalues(res_milp) < 0.1)
 ```
 
-Using the derivative-free optimization method:
+Use a simple simulation which generates p--values and covariates independent of the latter under the null to illustrate how DDHW works:
+
 ```{r}
-res_subplex <- ddhw(dds$pvalue,dds$baseMean, 10, 0.1, optim_method="subplex")
-weights(res_subplex)
-sum(adj_pvalues(res_subplex) < 0.1)
+wasserman_normal_sim <- function(m, pi0, xi_min, xi_max, seed=NULL){
+    if (!is.null(seed)) set.seed(seed)
+    X   <- runif(m, min=xi_min, max=xi_max)
+    H   <- rbinom(m,1,1-pi0)
+    Z   <- rnorm(m, H*X)
+    pvalue <- 1-pnorm(Z)
+    simDf <- data.frame(pvalue=pvalue, filterstat=X,H=H, Z=Z)
+}
+
+sim <- wasserman_normal_sim(100000, 0.97, 0, 3, seed=1)
+
 ```
 
-Compare these results to the standard BH procedure:
+Now apply DDHW, plot weights and compare number of rejections to number of rejections of the BH method.
+
 ```{r}
-sum(p.adjust(dds$pvalue, method="BH") < 0.1)
+res_symphony <- ddhw_auto(sim$pvalue,sim$filterstat, 0.1, solver="Rsymphony", nbins=10,  optim_pval_threshold=0.1)
+plot(weights(res_symphony))
+rejections(res_symphony)
+sum(p.adjust(sim$pvalue, method="BH") <= .1)
+
 ```
+

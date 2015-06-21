@@ -1,22 +1,23 @@
 Package: ddhw
 Title: Data-Driven Hypothesis Weights
 Version: 0.1
-Authors@R: "First Last <first.last@example.com> [aut, cre]"
-Description: What the package does (one paragraph)
+Authors@R: "Nikos Ignatiadis <nikos.ignatiadis01@gmail.com> [aut, cre]"
+Description: Modified BH-like procedure which takes p--values and covariates
+    (independent of the p--values under the Null) into account
 Depends:
-    R (>= 3.1.0)
-License: What license is it under?
+    R (>= 3.1.0),
+    lpsymphony,
+    fdrtool
+License: MIT
 LazyData: true
 Imports:
-    subplex,
-    slam,
-    Rsymphony
+    slam
 Suggests:
-	DESeq,
-	DESeq2,
-	Biobase,
-	airway,
-	pasilla,
+    DESeq,
+    DESeq2,
+    Biobase,
+    airway,
+    pasilla,
     testthat,
     knitr,
     gurobi

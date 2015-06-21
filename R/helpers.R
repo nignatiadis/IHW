@@ -1,3 +1,5 @@
+
+
 groups_by_filter <- function(filter_statistic, nbins){
 	rfs <- rank(filter_statistic, ties.method="first")/length(filter_statistic)
 	as.factor(ceiling( rfs* nbins))
@@ -51,14 +53,16 @@ get_wbh_weights<- function(obj){
 
 my_grenander <- function(unadj_p,t, distrib=F){
 
-  	x0 <- fndr.cutoff(unadj_p, "pvalue")	
-  	cf.out <- censored.fit(x=unadj_p, cutoff=x0, statistic="pvalue")
+  #x0 <- fndr.cutoff(unadj_p, "pvalue")
+  #pct0 = 0.5#0.75	
+  #x0 = quantile(unadj_p, probs=1-pct0)
+  #cf.out <- censored.fit(x=unadj_p, cutoff=x0, statistic="pvalue")
 
-    scale.param = NULL
-
-	eta0 = cf.out[1,3]
+	#eta0 = cf.out[1,3]
 
  	# determine cumulative empirical distribution function (pvalues)
+  eta0 <- lsl_pi0_est(unadj_p)
+  #eta0 <- 1
  	ee <- ecdf.pval(unadj_p, eta0=eta0)
 
 	g.pval <- grenander(ee)
@@ -123,4 +127,16 @@ ecdf.pval <- function (x, eta0=1)
     rval
 }
 
-  
+
+lsl_pi0_est <- function(pvalue){
+  n <- length(pvalue)
+  ls <- (n:1)/(1-sort(pvalue))
+  ls_diff <- ls[-c(1,2)] - ls[-c(1,n)]
+  index <- min(which(ls_diff > 0))+2
+  if (index == Inf) {
+    pi0 <- 1
+  } else {
+    pi0 <- min(1, (1+floor(ls[index]))/n)
+  }
+  pi0
+}
