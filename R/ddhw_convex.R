@@ -5,7 +5,7 @@ ddhw_tmp <- function(pvalues, filter_statistics, alpha,
 						nbins = 10,
 						nfolds = 10,
 						lambda = Inf,
-						lp_solver="gurobi"){
+						lp_solver="lpsymphony"){
 
 	# code from R's p.adjust function to gracefully handle NAs
 	nm <- names(pvalues)
@@ -58,8 +58,9 @@ ddhw_tmp <- function(pvalues, filter_statistics, alpha,
 
 	weighted_pvalues <- mydiv(pvalues, weights)
 	adj_p <- p.adjust( weighted_pvalues, method = "BH")
-	return(list(adj_p=adj_p,ws=weights,filter_statistics=filter_statistics, groups=groups))
+	return(list(pvalues=pvalues, adj_p=adj_p,ws=weights,filter_statistics=filter_statistics, groups=groups, folds=folds))
 }
+
 
 
 ddhw_convex <- function(split_sorted_pvalues, alpha, m_groups, lambda=Inf, lp_solver="gurobi"){
@@ -89,6 +90,7 @@ ddhw_convex <- function(split_sorted_pvalues, alpha, m_groups, lambda=Inf, lp_so
 
 	constr_matrix <- slam::simple_triplet_matrix(c(i_yi, i_ti), c(j_yi,j_ti), c(v_yi, v_ti))
 	rhs <- unlist(lapply(grenander_list, function(x) x$y.knots-x$slope.knots*x$x.knots))
+
 	obj <- c(m_groups/m*nbins*rep(1,nbins), rep(0,nbins))
 
 	if (lambda < Inf){
@@ -110,7 +112,7 @@ ddhw_convex <- function(split_sorted_pvalues, alpha, m_groups, lambda=Inf, lp_so
 
 		obj <- c(obj, rep(0, nbins-1))
 
-		total_variation_constr <- matrix(c(rep(0,nbins), -lambda*rep(1,nbins), nbins*rep(1,nbins-1)),nrow=1)
+		total_variation_constr <- matrix(c(rep(0,nbins), -lambda*m_groups/m, rep(1,nbins-1)),nrow=1)
 		constr_matrix <- rbind(constr_matrix, total_variation_constr)
 
 		rhs <- c(rhs,rep(0, 2*(nbins-1)),0) #add RHS for absolute differences and for total variation penalty
@@ -120,24 +122,43 @@ ddhw_convex <- function(split_sorted_pvalues, alpha, m_groups, lambda=Inf, lp_so
 	# incorporate the FDR constraint
 	fdr_constr<- matrix(c(rep(-alpha,nbins), rep(1,nbins), rep(0,ncol(constr_matrix)-2*nbins)), nrow=1)
 	constr_matrix <- rbind(constr_matrix, fdr_constr)
+	nvars <- ncol(constr_matrix)
 	rhs <- c(rhs,0)
 
-	model <- list()
-	model$A <- sparseMatrix(i=constr_matrix$i, j=constr_matrix$j, x=constr_matrix$v,
-           dims=c(constr_matrix$nrow, constr_matrix$ncol))
-	model$obj <- obj
-	model$modelsense <- "max"
-	model$rhs        <- rhs
-	model$lb         <- 0
-	model$ub         <- 1
-	model$sense      <- '<'
-	#model$vtype      <- model_vtype
+		if (lp_solver == "gurobi"){
+		model <- list()
+		model$A <- sparseMatrix(i=constr_matrix$i, j=constr_matrix$j, x=constr_matrix$v,
+           		dims=c(constr_matrix$nrow, constr_matrix$ncol))
+		model$obj <- obj
+		model$modelsense <- "max"
+		model$rhs        <- rhs
+		model$lb         <- 0
+		model$ub         <- 2
+		model$sense      <- '<'
 
-	params <- list()
-	res <- gurobi(model, params)
-	sol <- res$x
-	solver_status <- res$status
-	ts <- sol[(1:nbins)+nbins]
+		params <- list(OutputFlag=1, Method=2)
+		res <- gurobi(model, params)
+		sol <- res$x
+		solver_status <- res$status
+
+	} else if (lp_solver=="lpsymphony") {
+
+		#rsymphony_bounds <- list(lower=list(ind=1:nvars, val=rep(0,nvars)),
+		#					 upper=list(ind=1:nvars, val=rep(1,nvars)))
+
+		#if (is.infinite(time_limit)) time_limit <- -1
+		#if (is.infinite(node_limit)) node_limit <- -1
+		res <- lpsymphony::lpsymphony_solve_LP(obj, constr_matrix, rep("<=", nrow(constr_matrix)),
+			rhs, #bounds= rsymphony_bounds,
+			max = T, verbosity = -2, first_feasible = FALSE)
+		sol <- res$solution
+		solver_status <- res$status
+	} else {
+		stop("Only gurobi and lpsymphony solvers currently supported.")
+	}
+
+	# catch negative weights due to numerical rounding
+	ts <- pmax(sol[(1:nbins)+nbins],0) #maybe instead pmax(..,0) will be better (in practice almost the same)
 	ws <- thresholds_to_weights(ts, m_groups)	#ts/sum(ts)*nbins
 
 
@@ -148,14 +169,17 @@ ddhw_convex <- function(split_sorted_pvalues, alpha, m_groups, lambda=Inf, lp_so
 
 presorted_grenander <- function(sorted_pvalues){
   	n  <- length(sorted_pvalues)
-  	sorted_pvalues <- sorted_pvalues
   	unique_pvalues <- unique(sorted_pvalues)
   	ecdf_values <- cumsum(tabulate(match(sorted_pvalues, unique_pvalues)))/n
-  	unique_pvalues <- c(0,unique_pvalues)
-  	ecdf_values   <- c(0, ecdf_values)
+  	if (min(unique_pvalues) > 0){
+  		# I think fdrtool neglects this borderline case and this causes returned object
+  		# to be discontinuous hence also not concave
+  		unique_pvalues <- c(0,unique_pvalues)
+  		ecdf_values   <- c(0, ecdf_values)
+  	}
   	ll <- gcmlcm(unique_pvalues, ecdf_values, type="lcm")
 	ll$length <- length(ll$slope.knots)
 	ll$x.knots <- ll$x.knots[-ll$length]
-	ll$y.knots <- ll$y.knots[-ll$length]
+  	ll$y.knots <- ll$y.knots[-ll$length]
 	ll
 }
