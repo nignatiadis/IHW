@@ -140,3 +140,13 @@ lsl_pi0_est <- function(pvalue){
   }
   pi0
 }
+
+fill_nas_reorder <- function (reduced_vector, nna, order){
+  if (length(nna)==1 && nna){
+    full_vector <- reduced_vector[order]
+  } else {
+    full_vector <- rep(NA, length(nna))
+    full_vector[nna] <- reduced_vector[order]
+  }
+  full_vector
+}
