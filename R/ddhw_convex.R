@@ -7,28 +7,19 @@
 #' @param alpha   Numeric, sets the nominal level for FDR control.
 #' @param filter_statistic_type  "ordinal" or "nominal" (i.e. whether filter statistics can be sorted in increasing order or not)
 #' @param nbins  Integer, number of groups into which p-values will be split based on filter_statistic. Use "auto" for
-#'             automatic selection of the number of bins.
-#' @param mtests   Numeric, true number of comparisons, must be at least ‘length(unadj_p) !NOT tested yet
-#' @param optim_method  Optimization method with which optimal weights are determined. Available options are "MILP" (default) and "subplex".
-#' @param lp_relaxation If optim_method = "MILP" then one can either solve the NP hard MILP problem (lp_relaxation = F) or the linear relaxation (lp_relaxation=T). The latter is suggested!
-#' @param pi0_adaptive  Enhance DDHW to an alpha-exhaustive procedure. !NOT TESTED YET
-#' @param solver   Solver to be used for "MILP" optimization. Available options are "Rsymphony" (default, open source) and "gurobi" (commercial, free for academics, faster).
-#' @param regularization_term   Numeric
-#' @param penalty  "total variation" for ordered data, "uniform deviation" for categorical data
-#' @param optim_pval_threshold   Numeric between 0 and 1 or Character "auto" (default). P-values above this threshold get excluded
-#'    from the optimization procedure (e.g. because it is known a-priori that P-values above that threshold will
-#'    not get rejected), thus making it faster. Defaults to "auto" which will use heuristics to calculate this threshold.
-#' @param time_limit   Numeric, sets maximum time limit for MILP solvers. Defaults to Inf.
-#' @param node_limit   Integer, sets maximum number of branch and bound nodes to explore for MILP solvers. Defaults to Inf.
-#' @param threads   Integer, number of threads for the MILP solver to use. Defaults to 0 (i.e. solver default, often uses all threads available)
-#' @param mip_gap_abs  Gurobi specific parameter
-#' @param mip_gap      Gurobi specific parameter
-#' @param MIPFocus     Gurobi specific parameter
-#' @param local_fdr    Combine DDHW ideas with Cai's estimator. !NOT IMPLEMENTED 
-
+#'             automatic selection of the number of bins. Only applicable when filter_statistics is not a factor.
+#' @param quiet  
+#' @param nfolds Number of folds into which the p-values will be split for the pre-validation procedure
+#' @param nfolds_internal  Within each fold, a second  (nested) layer of cross-validation can be conducted to choose a good
+#'              regularization parameter. This parameter controls the number of nested folds.
+#' @param lambdas  Numeric vector which defines the grid of possible regularization parameters.
+#'				Use "auto" for automatic selection.
+#' @param lp_solver  Internally, DDHW solves a sequence of linear programs. These can be solved with "lpsymphony" or "gurobi".
+#' @param return_internal Returns a lower level representation of the output (only useful for debugging purposes).
 ddhw_tmp <- function(pvalues, filter_statistics, alpha,
 						filter_statistic_type = "ordinal",
-						nbins = 10,
+						nbins = "auto",
+						quiet =T ,
 						nfolds = 5,
 						nfolds_internal = 4,
 						lambdas = "auto",
@@ -39,6 +30,14 @@ ddhw_tmp <- function(pvalues, filter_statistics, alpha,
 	# This function essentially wraps the lower level function ddhw_internal
 	# e.g. takes care of NAs, sorts pvalues and then
 	# returns a nice ddhw object
+
+	if (nbins == "auto"){
+		nbins <- min(300, floor(length(pvalues)/1000)) # rule of thumb..
+	}
+
+	if (lambdas == "auto"){
+		stop("oops not implemented yet")
+	}
 
 	# code from R's p.adjust function to gracefully handle NAs
 	nm <- names(pvalues)
@@ -63,12 +62,15 @@ ddhw_tmp <- function(pvalues, filter_statistics, alpha,
 		if (filter_statistic_type == "nominal"){
 			lambdas <- Inf
 		}
-		# TODO: check if each group has enough p-values
 	} else {
 		stop("filter_statistics are not of the appropriate type")
 	}
 
+
 	# once we have groups, check whether they include enough p-values
+	if (any(table(groups) < 1000)){
+		stop("Data-driven choice of weights requires at least 1000 p-values per stratum.")
+	}
 
 	# sort pvalues globally
 	order_pvalues <- order(pvalues)
@@ -78,9 +80,12 @@ ddhw_tmp <- function(pvalues, filter_statistics, alpha,
 	sorted_pvalues <- pvalues[order_pvalues]
 
 	res <- ddhw_internal(sorted_groups, sorted_pvalues, alpha, lambdas,
-						nbins=nbins, nfolds=nfolds, 
+						nbins=nbins,
+						quiet=quiet,
+						nfolds=nfolds,
 						nfolds_internal=nfolds_internal,
 						lp_solver=lp_solver,
+
 						...)
 
 	if (return_internal){
@@ -115,6 +120,7 @@ ddhw_tmp <- function(pvalues, filter_statistics, alpha,
 # operate on pvalues which have already been sorted and without any NAs
 ddhw_internal <- function(sorted_groups, sorted_pvalues, alpha, lambdas,
 								nbins = 10,
+								quiet=TRUE,
 								nfolds = 10,
 								nfolds_internal = nfolds,
 								lp_solver="lpsymphony",
@@ -154,7 +160,7 @@ ddhw_internal <- function(sorted_groups, sorted_pvalues, alpha, lambdas,
 				lambda <- lambdas[k]
 				# To consider: internal nfolds does not have to be the same, could be 2 for speedup
 				rjs[k] <- ddhw_internal(filtered_sorted_groups, filtered_sorted_pvalues, alpha, lambda,
-										nbins=nbins, nfolds=nfolds_internal, lp_solver=lp_solver)$rjs
+										nbins=nbins, quiet=quiet, nfolds=nfolds_internal, lp_solver=lp_solver)$rjs
 				if (debug_flag==T){
 					rjs_path_mat[i,k] <- rjs[k]
 				}
@@ -171,7 +177,7 @@ ddhw_internal <- function(sorted_groups, sorted_pvalues, alpha, lambdas,
 		m_groups_holdout_fold <- m_groups - sapply(filtered_split_sorted_pvalues, length)
 
 		res <- ddhw_convex(filtered_split_sorted_pvalues, alpha, m_groups_holdout_fold,
-						   lambda=lambda, lp_solver=lp_solver)
+						   lambda=lambda, lp_solver=lp_solver, quiet=quiet)
 
 		sorted_weights[sorted_folds == i] <- res$ws[sorted_groups[sorted_folds==i]]
 	# I do need some kind of new object though...
@@ -190,7 +196,7 @@ ddhw_internal <- function(sorted_groups, sorted_pvalues, alpha, lambdas,
 	lst
 }
 
-ddhw_convex <- function(split_sorted_pvalues, alpha, m_groups, lambda=Inf, lp_solver="gurobi"){
+ddhw_convex <- function(split_sorted_pvalues, alpha, m_groups, lambda=Inf, lp_solver="gurobi", quiet=quiet){
 
 	# preprocessing:  Set too low p-values to 0, otherwise LP solvers have problems
 	# Note: This only affects the internal optimization, the higher level functions will
@@ -209,7 +215,8 @@ ddhw_convex <- function(split_sorted_pvalues, alpha, m_groups, lambda=Inf, lp_so
 	}
 
 	#lapply grenander...
-	grenander_list <- lapply(split_sorted_pvalues, presorted_grenander)
+	if (!quiet) message("Applying Grenander estimator within each bin.")
+	grenander_list <- lapply(split_sorted_pvalues, presorted_grenander, quiet=quiet)
 
 
 	#set up LP
@@ -261,7 +268,9 @@ ddhw_convex <- function(split_sorted_pvalues, alpha, m_groups, lambda=Inf, lp_so
 	nvars <- ncol(constr_matrix)
 	rhs <- c(rhs,0)
 
-		if (lp_solver == "gurobi"){
+	if (!quiet) message("Starting to solve LP.")
+
+	if (lp_solver == "gurobi"){
 		model <- list()
 		model$A <- sparseMatrix(i=constr_matrix$i, j=constr_matrix$j, x=constr_matrix$v,
            		dims=c(constr_matrix$nrow, constr_matrix$ncol))
@@ -303,7 +312,7 @@ ddhw_convex <- function(split_sorted_pvalues, alpha, m_groups, lambda=Inf, lp_so
 }
 
 
-presorted_grenander <- function(sorted_pvalues){
+presorted_grenander <- function(sorted_pvalues, quiet=T){
   	n  <- length(sorted_pvalues)
   	unique_pvalues <- unique(sorted_pvalues)
   	ecdf_values <- cumsum(tabulate(match(sorted_pvalues, unique_pvalues)))/n
@@ -317,5 +326,6 @@ presorted_grenander <- function(sorted_pvalues){
 	ll$length <- length(ll$slope.knots)
 	ll$x.knots <- ll$x.knots[-ll$length]
   	ll$y.knots <- ll$y.knots[-ll$length]
+	if (!quiet) message(paste("Grenander fit with", ll$length, "knots."))
 	ll
 }
