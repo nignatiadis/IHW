@@ -16,6 +16,7 @@
 #'				Use "auto" for automatic selection.
 #' @param lp_solver  Internally, DDHW solves a sequence of linear programs. These can be solved with "lpsymphony" or "gurobi".
 #' @param return_internal Returns a lower level representation of the output (only useful for debugging purposes).
+
 ddhw_tmp <- function(pvalues, filter_statistics, alpha,
 						filter_statistic_type = "ordinal",
 						nbins = "auto",
@@ -31,10 +32,9 @@ ddhw_tmp <- function(pvalues, filter_statistics, alpha,
 	# e.g. takes care of NAs, sorts pvalues and then
 	# returns a nice ddhw object
 
-	if (nbins == "auto"){
-		nbins <- min(300, floor(length(pvalues)/1000)) # rule of thumb..
+	if (nfolds==1){
+		warning("Using only 1 fold! Only use this if you want to learn the weights, but NEVER for testing!")
 	}
-
 	if (lambdas == "auto"){
 		stop("oops not implemented yet")
 	}
@@ -53,6 +53,14 @@ ddhw_tmp <- function(pvalues, filter_statistics, alpha,
     pvalues <- pvalues[nna]
     filter_statistics <- filter_statistics[nna]
     weights <- rep(NA, length(pvalues))
+
+    if (any(is.na(filter_statistics))){
+    	stop("Filter statistics corresponding to non-NA p-values should never be NA. Aborting.")
+    }
+
+	if (nbins == "auto"){
+		nbins <- min(300, floor(length(pvalues)/1000)) # rule of thumb..
+	}
 
 	if (filter_statistic_type =="ordinal" & is.numeric(filter_statistics)){
 		groups <- groups_by_filter(filter_statistics, nbins)
@@ -146,11 +154,17 @@ ddhw_internal <- function(sorted_groups, sorted_pvalues, alpha, lambdas,
 	}
 	for (i in 1:nfolds){
 
+		if (!quiet) message(paste("Estimating weights for fold", i))
 		# don't worry about inefficencies right now, they are only O(n) and sorting dominates this
-		filtered_sorted_groups <- sorted_groups[sorted_folds!=i]
-		filtered_sorted_pvalues <- sorted_pvalues[sorted_folds!=i]
-		filtered_split_sorted_pvalues <- split(filtered_sorted_pvalues, filtered_sorted_groups)
-
+		if (nfolds == 1){
+			filtered_sorted_groups <- sorted_groups
+			filtered_sorted_pvalues <- sorted_pvalues
+			filtered_split_sorted_pvalues <- split(filtered_sorted_pvalues, filtered_sorted_groups)
+		} else {
+			filtered_sorted_groups <- sorted_groups[sorted_folds!=i]
+			filtered_sorted_pvalues <- sorted_pvalues[sorted_folds!=i]
+			filtered_split_sorted_pvalues <- split(filtered_sorted_pvalues, filtered_sorted_groups)
+		}
 		# within each fold do iterations to also find lambda
 
 		# TODO replace for loop by single call to ddhw_convex..
@@ -174,7 +188,11 @@ ddhw_internal <- function(sorted_groups, sorted_pvalues, alpha, lambdas,
 		fold_lambdas[i] <- lambda
 
 		# ok we have finally picked lambda and can proceed
-		m_groups_holdout_fold <- m_groups - sapply(filtered_split_sorted_pvalues, length)
+		if (nfolds==1){
+			m_groups_holdout_fold <- m_groups
+		} else {
+			m_groups_holdout_fold <- m_groups - sapply(filtered_split_sorted_pvalues, length)
+		}
 
 		res <- ddhw_convex(filtered_split_sorted_pvalues, alpha, m_groups_holdout_fold,
 						   lambda=lambda, lp_solver=lp_solver, quiet=quiet)
@@ -263,7 +281,7 @@ ddhw_convex <- function(split_sorted_pvalues, alpha, m_groups, lambda=Inf, lp_so
 	}
 
 	# incorporate the FDR constraint
-	fdr_constr<- matrix(c(rep(-alpha,nbins), rep(1,nbins), rep(0,ncol(constr_matrix)-2*nbins)), nrow=1)
+	fdr_constr<- matrix(c(rep(-alpha,nbins)*m_groups, rep(1,nbins)*m_groups, rep(0,ncol(constr_matrix)-2*nbins)), nrow=1)
 	constr_matrix <- rbind(constr_matrix, fdr_constr)
 	nvars <- ncol(constr_matrix)
 	rhs <- c(rhs,0)
