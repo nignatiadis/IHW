@@ -42,7 +42,7 @@
 ddhw <- function(pvalues, filter_statistics, alpha,
 						filter_statistic_type = "ordinal",
 						nbins = "auto",
-						quiet =T ,
+						quiet =TRUE ,
 						nfolds = 5L,
 						nfolds_internal = 5L,
 						lambdas = "auto",

@@ -5,7 +5,7 @@
 \title{DDHW: Data-Driven Hypothesis Weights}
 \usage{
 ddhw(pvalues, filter_statistics, alpha, filter_statistic_type = "ordinal",
-  nbins = "auto", quiet = T, nfolds = 5L, nfolds_internal = 5L,
+  nbins = "auto", quiet = TRUE, nfolds = 5L, nfolds_internal = 5L,
   lambdas = "auto", seed = 1L, lp_solver = "lpsymphony",
   return_internal = FALSE, ...)
 }
