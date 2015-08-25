@@ -1,41 +1,115 @@
 ---
-title: "DDHW on a simple simulation"
+title: "Introduction to DDHW"
 author: "N. Ignatiadis"
 date: "`r Sys.Date()`"
-output: rmarkdown::html_vignette
+output: BiocStyle::html_document
 vignette: >
-  %\VignetteIndexEntry{"Introduction to ddhw"}
+  %\VignetteIndexEntry{"Introduction to DDHW"}
   %\VignetteEngine{knitr::rmarkdown}
   %\usepackage[utf8]{inputenc}
 ---
 
-```{r}
-library("ddhw")
+# Introduction
+
+A classical multiple testing procedure takes a set of p-values and then calculates adjusted p-values. Given a significance level $\alpha$, one can then declare the significant (rejected) hypotheses. In R this is most commonly done with the p.adjust function. 
+
+Similarly, DDHW is also a multiple testing procedure, but beyond the p-values, it also requires a covariate (filter statistic) which is independent of the p-values under the null hypothesis. Therefore the basic input of DDHW is the following
+
+* A vector of p-values
+* A vector of covariates (filter-statistics), independent of the p-values under the null hypothesis
+* A signifance level $\alpha \in (0,1)$ at which the False Discovery Rate should be controlled.
+
+DDHW then calculates weights for each p-value and also a vector of rejected hypothesis at the specified significance level. Roughly speaking, the weights allow different prioritization of the individual hypotheses, based on their covariate.
+
+If this covariate also happens to be informative about the power of the individual tests, then we can actually gain a lot of power compared to an unweighted method (an unweighted method is a weighted method where all tests are assigned weight 1).
+
+In this vignette, we will show how to use the package in differential gene expression RNA-Seq analysis and then also mention some other examples where our method is applicable.
+
+# DDHW and DESeq2
+
+Here we analyze the airway RNA-Seq dataset using DESeq2.
+
+```{r, message=FALSE, warning=FALSE}
+library("airway")
+library("DESeq2")
+data("airway")
+dds <- DESeqDataSet(se = airway, design = ~ cell + dex)
+dds <- DESeq(dds)
+res <- results(dds)
 ```
 
-Use a simple simulation which generates p--values and covariates independent of the latter under the null to illustrate how DDHW works:
+The output is a standard DESeqResults object, which includes the following columns for each gene:
 
 ```{r}
-wasserman_normal_sim <- function(m, pi0, xi_min, xi_max, seed=NULL){
-    if (!is.null(seed)) set.seed(seed)
-    X   <- runif(m, min=xi_min, max=xi_max)
-    H   <- rbinom(m,1,1-pi0)
-    Z   <- rnorm(m, H*X)
-    pvalue <- 1-pnorm(Z)
-    simDf <- data.frame(pvalue=pvalue, filterstat=X,H=H, Z=Z)
-}
-
-sim <- wasserman_normal_sim(100000, 0.97, 0, 3, seed=1)
-
+colnames(res)
 ```
 
-Now apply DDHW, plot weights and compare number of rejections to number of rejections of the BH method.
+In particular, we have p-values and the baseMean of (normalized) counts for each gene. As argued in the DESeq2 paper, these two statistics are approximately independent under the null hypothesis. Thus we have all the ingredient necessary for a DDHW analysis (p-values and covariates), which we will apply at a significance level 0.1.
+
+First load DDHW
+```{r, message=FALSE, warning=FALSE}
+library("DDHW")
+```
+
+Then apply it:
 
 ```{r}
-res_symphony <- ddhw_auto(sim$pvalue,sim$filterstat, 0.1, solver="Rsymphony", nbins=10,  optim_pval_threshold=0.1)
-plot(weights(res_symphony))
-rejections(res_symphony)
-sum(p.adjust(sim$pvalue, method="BH") <= .1)
-
+ddhw_res <- ddhw(res$pvalue, res$baseMean, .1)
 ```
+
+This returns an object of the class ddhwResult. We can get e.g. the total number of rejections at our pre-specified significance level alpha:
+
+```{r}
+rejections(ddhw_res)
+```
+
+And we can also extract the adjusted p-values:
+```{r}
+head(adj_pvalues(ddhw_res))
+sum(adj_pvalues(ddhw_res) <= 0.1, na.rm=TRUE) == rejections(ddhw_res)
+```
+
+We can compare this to the result of applying Benjamini Hochberg on the p-values:
+
+```{r}
+padj_bh <- p.adjust(res$pvalue, method="BH")
+sum(padj_bh <= 0.1, na.rm=TRUE)
+```
+
+We thus get a lot more rejections! How did we get this power? Essentially it was possible by assigning appropriate weights to each hypothesis! We can retrieve the weights as follows:
+
+```{r}
+head(weights(ddhw_res))
+```
+
+Basically, a hypothesis with weight > 1 gets prioritized in the testing procedure and the higher the weight the higher the prioritization. On the other hand, a hypothesis with weight equal to 0 cannot be rejected and essentially is filtered out of the procedure.
+
+Internally, what happened was the following: We split the hypotheses into $n$ different strata based on increasing value of baseMean and we also randomly split them into $k$ folds (here $k=5$). Then, for each combination of folds + stratum, we learned the weights. The discretization into strata facilitates the estimation of the distribution function conditionally on the covariate and the internal optimization which estimates the weights. The division into random folds helps us to avoid "overfitting" the data, something which would result in a loss of control of the False Discovery Rate.
+
+We can also see this internal representation of the weights as a ($n$ X $k$) matrix:
+
+```{r}
+weights(ddhw_res, levels_only=TRUE)
+```
+
+Finally, DDHW contains a convenience function for visualization of the estimated weights:
+
+```{r}
+plot_ddhw(ddhw_res)
+```
+
+Here we see that the general trend is driven by the covariate (stratum) and not as much by the fold. Also as expected, genes with very low baseMean count get assigned a weight of 0, while genes with high baseMean count get prioritized.
+
+# Regarding the covariate
+
+In which cases is DDHW applicable? Whenever we have a covariate which is both informative of power and independent of the p-values under the null hypothesis.
+
+Below we summarize some examples, where such a covariate is available:
+
+Examples:
+ 
+ *  For row-wise $t$-tests  we can use the overall (row-wise) variance 
+ *  For Rank tests  we can use any function that does not depend on order of arguments  
+ *  In DESeq2, we can use baseMean, as illustrated above.
+ *  In  eQTL analysis we can use the SNP-gene distance, the DNAse sensitivity, the HiC score, etc. 
 

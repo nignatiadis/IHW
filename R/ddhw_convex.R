@@ -1,5 +1,9 @@
-#' ddhw: Data-Driven Hypothesis Weights
+#' DDHW: Data-Driven Hypothesis Weights
 #'
+#' Given a vector of p-values, a vector of filter-statistics which are independent of the p-values under the null hypothesis and
+#' a nominal significance level alpha, DDHW learns multiple testing weights and then applies the weighted Benjamini Hochberg 
+#' procedure. When the filter-statistic is informative of the power of the individual tests, this procedure can increase
+#' power.
 #'
 #' @param pvalues  Numeric vector of unadjusted p-values.
 #' @param filter_statistics  Vector which contains the one-dimensional filter-statistics (covariates, independent under the H0 of the p-value) 
@@ -8,22 +12,41 @@
 #' @param filter_statistic_type  "ordinal" or "nominal" (i.e. whether filter statistics can be sorted in increasing order or not)
 #' @param nbins  Integer, number of groups into which p-values will be split based on filter_statistic. Use "auto" for
 #'             automatic selection of the number of bins. Only applicable when filter_statistics is not a factor.
-#' @param quiet  
+#' @param quiet  Boolean, if False a lot of messages are printed during the fitting stages.
 #' @param nfolds Number of folds into which the p-values will be split for the pre-validation procedure
 #' @param nfolds_internal  Within each fold, a second  (nested) layer of cross-validation can be conducted to choose a good
 #'              regularization parameter. This parameter controls the number of nested folds.
 #' @param lambdas  Numeric vector which defines the grid of possible regularization parameters.
 #'				Use "auto" for automatic selection.
-#' @param lp_solver  Internally, DDHW solves a sequence of linear programs. These can be solved with "lpsymphony" or "gurobi".
+#' @param seed Integer or NULL. Split of hypotheses into folds is done randomly. To have output of the function be reproducible, 
+#'	we set a seed. Use NULL if you don't want a seed.
+#' @param lp_solver  Character ("lpsymphony" or "gurobi"). Internally, DDHW solves a sequence of linear programs, which
+#'        can be solved with either of these solvers.
 #' @param return_internal Returns a lower level representation of the output (only useful for debugging purposes).
-
-ddhw_tmp <- function(pvalues, filter_statistics, alpha,
+#' @param ... Arguments passed to internal functions.
+#'
+#' @return A ddhwResult object.
+#' @seealso ddhwResult, plot_ddhw
+#' 
+#' @examples
+#'
+#'    set.seed(1)
+#'    X   <- runif(20000, min=0.5, max=4.5) #covariate
+#'    H   <- rbinom(20000,1,0.1)            #hypothesis true or false
+#'    Z   <- rnorm(20000, H*X)              #Z-score
+#'    pvalue <- 1-pnorm(Z)                  #pvalue
+#'    ddhw_res <- ddhw(pvalue, X, .1)
+#'
+#'
+#' @export
+ddhw <- function(pvalues, filter_statistics, alpha,
 						filter_statistic_type = "ordinal",
 						nbins = "auto",
 						quiet =T ,
-						nfolds = 5,
-						nfolds_internal = 4,
+						nfolds = 5L,
+						nfolds_internal = 5L,
 						lambdas = "auto",
+						seed = 1L,
 						lp_solver="lpsymphony",
 						return_internal=FALSE,
 						...){
@@ -32,20 +55,18 @@ ddhw_tmp <- function(pvalues, filter_statistics, alpha,
 	# e.g. takes care of NAs, sorts pvalues and then
 	# returns a nice ddhw object
 
+	nfolds <- as.integer(nfolds)
+	nfolds_internal <- as.integer(nfolds_internal)
+
 	if (nfolds==1){
 		warning("Using only 1 fold! Only use this if you want to learn the weights, but NEVER for testing!")
 	}
-	if (lambdas == "auto"){
-		stop("oops not implemented yet")
-	}
 
-	# code from R's p.adjust function to gracefully handle NAs
-	nm <- names(pvalues)
-    pvalues <- as.numeric(pvalues)
 
-   	p0 <- setNames(pvalues, nm)
+	# gracefully handle NAs
+   	nna <- !is.na(pvalues)
 
-   	if (all(nna <- !is.na(pvalues))){
+   	if (all(nna)){
         nna <- TRUE
    	}
 
@@ -59,7 +80,12 @@ ddhw_tmp <- function(pvalues, filter_statistics, alpha,
     }
 
 	if (nbins == "auto"){
-		nbins <- min(300, floor(length(pvalues)/1000)) # rule of thumb..
+		nbins <- min(300, floor(length(pvalues)/1500)) # rule of thumb..
+	}
+
+	if ((length(lambdas)== 1) & (lambdas[1] == "auto")){
+		# just a few for now until I get warm starts of the LP solvers to work
+		lambdas <- c(1, nbins/8, nbins/4, nbins/2, nbins, Inf)
 	}
 
 	if (filter_statistic_type =="ordinal" & is.numeric(filter_statistics)){
@@ -80,18 +106,19 @@ ddhw_tmp <- function(pvalues, filter_statistics, alpha,
 		stop("Data-driven choice of weights requires at least 1000 p-values per stratum.")
 	}
 
+	group_levels <- levels(groups)
 	# sort pvalues globally
-	order_pvalues <- order(pvalues)
+	order_pvalues <- order(pvalues) #TODO BREAK ties by filter statistic rank
 	reorder_pvalues <- order(order_pvalues)
 
 	sorted_groups <- groups[order_pvalues]
 	sorted_pvalues <- pvalues[order_pvalues]
 
 	res <- ddhw_internal(sorted_groups, sorted_pvalues, alpha, lambdas,
-						nbins=nbins,
 						quiet=quiet,
 						nfolds=nfolds,
 						nfolds_internal=nfolds_internal,
+						seed=seed,
 						lp_solver=lp_solver,
 
 						...)
@@ -102,37 +129,47 @@ ddhw_tmp <- function(pvalues, filter_statistics, alpha,
 
 	# resort back to original form
 	weights <- fill_nas_reorder(res$sorted_weights, nna, reorder_pvalues)
-	pvalues <- p0
+	pvalues <- fill_nas_reorder(res$sorted_pvalues, nna, reorder_pvalues)
 	weighted_pvalues <- fill_nas_reorder(res$sorted_weighted_pvalues, nna, reorder_pvalues)
 	adj_pvalues <- fill_nas_reorder(res$sorted_adj_p, nna, reorder_pvalues)
-	groups     <- fill_nas_reorder(res$sorted_groups, nna, reorder_pvalues)
-	folds      <- fill_nas_reorder(res$sorted_folds, nna, reorder_pvalues)
-	#weights[nna] <- res$sorted_weights[order_pvalues]
+	groups     <- factor(fill_nas_reorder(res$sorted_groups, nna, reorder_pvalues),levels=group_levels)
+	folds      <- factor(fill_nas_reorder(res$sorted_folds, nna, reorder_pvalues),levels=1:nfolds)
+	filter_statistics <- fill_nas_reorder(filter_statistics, nna, 1:length(filter_statistics))
 
-	#weighted_pvalues <- setNames(pvalues, nm)
-	#weighted_pvalues <- 
-	lst <- list(rjs=res$rjs,
-	            pvalues=pvalues,
-	            weights = weights,
-	            weighted_pvalues=weighted_pvalues,
-	            adj_pvalues=adj_pvalues,
-	            groups=groups,
-	            folds=folds)
 
-	lst
-	#weighted_pvalues <- mydiv(pvalues, weights)
-	#adj_p <- p.adjust( weighted_pvalues, method = "BH")
-	#return(list(pvalues=pvalues, adj_p=adj_p,ws=weights,filter_statistics=filter_statistics, groups=groups, folds=folds))
+	df <- data.frame(pvalue = pvalues,
+					 padj = adj_pvalues,
+				     weights = weights,
+				     weighted_pvalues = weighted_pvalues,
+					 group= groups,
+					 filter_statistic = filter_statistics,
+					 folds=as.factor(folds))
+
+	ddhw_obj <- new("ddhwResult",
+		 			df = df,
+		 			weights = res$weight_matrix,
+		 			alpha = alpha,
+					nbins = as.integer(nbins),
+					nfolds = nfolds,
+					regularization_term = res$fold_lambdas,
+					penalty = "total variation",
+					filter_statistic_type = filter_statistic_type,
+					reg_path_information = data.frame(),
+		 			solver_information = list())
+
+
+	ddhw_obj
+
 }
 
 # operate on pvalues which have already been sorted and without any NAs
 ddhw_internal <- function(sorted_groups, sorted_pvalues, alpha, lambdas,
-								nbins = 10,
+							    seed=NULL,
 								quiet=TRUE,
 								nfolds = 10,
 								nfolds_internal = nfolds,
 								lp_solver="lpsymphony",
-								debug_flag=F){
+								debug_flag=FALSE){
 
 	# TODO: check if lambdas are sorted the way I want them to
 
@@ -140,16 +177,17 @@ ddhw_internal <- function(sorted_groups, sorted_pvalues, alpha, lambdas,
 	split_sorted_pvalues <- split(sorted_pvalues, sorted_groups)
 	m_groups <- sapply(split_sorted_pvalues, length)
 
-	#recover weights
 
-	# afterwards do the k-fold strategy
-	set.seed(1)
+	#  do the k-fold strategy
+	if (!is.null(seed)) set.seed(as.integer(seed)) #seed
+
 	sorted_folds <- sample(1:nfolds, m, replace = TRUE)
 
 	sorted_weights <- rep(NA, m)
 	fold_lambdas <- rep(NA, nfolds)
+	weight_matrix <- matrix(NA, nlevels(sorted_groups), nfolds)
 
-	if (debug_flag==T){
+	if (debug_flag==TRUE){
 		rjs_path_mat <- matrix(NA, nrow=nfolds, ncol=length(lambdas))
 	}
 	for (i in 1:nfolds){
@@ -167,15 +205,16 @@ ddhw_internal <- function(sorted_groups, sorted_pvalues, alpha, lambdas,
 		}
 		# within each fold do iterations to also find lambda
 
-		# TODO replace for loop by single call to ddhw_convex..
+		# TODO replace for loop by single call to ddhw_convex with warm starts
 		if (length(lambdas) > 1){
 			rjs  <- rep(NA, length(lambdas))
 			for (k in 1:length(lambdas)){
 				lambda <- lambdas[k]
 				# To consider: internal nfolds does not have to be the same, could be 2 for speedup
 				rjs[k] <- ddhw_internal(filtered_sorted_groups, filtered_sorted_pvalues, alpha, lambda,
-										nbins=nbins, quiet=quiet, nfolds=nfolds_internal, lp_solver=lp_solver)$rjs
-				if (debug_flag==T){
+									    seed=seed, quiet=quiet,
+									    nfolds=nfolds_internal, lp_solver=lp_solver)$rjs
+				if (debug_flag==TRUE){
 					rjs_path_mat[i,k] <- rjs[k]
 				}
 			}
@@ -198,7 +237,7 @@ ddhw_internal <- function(sorted_groups, sorted_pvalues, alpha, lambdas,
 						   lambda=lambda, lp_solver=lp_solver, quiet=quiet)
 
 		sorted_weights[sorted_folds == i] <- res$ws[sorted_groups[sorted_folds==i]]
-	# I do need some kind of new object though...
+		weight_matrix[,i] <- res$ws
 	}
 
 	sorted_weighted_pvalues <- mydiv(sorted_pvalues, sorted_weights)
@@ -207,16 +246,20 @@ ddhw_internal <- function(sorted_groups, sorted_pvalues, alpha, lambdas,
 	lst <- list(lambda=lambda, fold_lambdas=fold_lambdas, rjs=rjs, sorted_pvalues=sorted_pvalues,
 					sorted_weighted_pvalues = sorted_weighted_pvalues,
 					sorted_adj_p=sorted_adj_p, sorted_weights=sorted_weights,
-					sorted_groups=sorted_groups, sorted_folds=sorted_folds)
-	if (debug_flag == T) {
+					sorted_groups=sorted_groups, sorted_folds=sorted_folds,
+					weight_matrix = weight_matrix)
+
+	if (debug_flag == TRUE) {
 		lst$rjs_path_mat <- rjs_path_mat
 	}
 	lst
 }
 
+#' @importFrom slam simple_triplet_zero_matrix simple_triplet_matrix
+#' @importFrom lpsymphony lpsymphony_solve_LP
 ddhw_convex <- function(split_sorted_pvalues, alpha, m_groups, lambda=Inf, lp_solver="gurobi", quiet=quiet){
 
-	# preprocessing:  Set too low p-values to 0, otherwise LP solvers have problems
+	# preprocessing:  Set very low p-values to 0, otherwise LP solvers have problems due to numerical instability
 	# Note: This only affects the internal optimization, the higher level functions will
 	# still return adjusted pvalues based on the original p-values
 	split_sorted_pvalues <- lapply(split_sorted_pvalues, function(x) ifelse(x > 10^(-20), x, 0))
@@ -238,7 +281,6 @@ ddhw_convex <- function(split_sorted_pvalues, alpha, m_groups, lambda=Inf, lp_so
 
 
 	#set up LP
-	# TODO account for different stratum sizes
 	nconstraints_per_bin <- sapply(grenander_list, function(x) x$length)
 	nconstraints <- sum(nconstraints_per_bin) 
 	i_yi <- 1:nconstraints
@@ -290,7 +332,7 @@ ddhw_convex <- function(split_sorted_pvalues, alpha, m_groups, lambda=Inf, lp_so
 
 	if (lp_solver == "gurobi"){
 		model <- list()
-		model$A <- sparseMatrix(i=constr_matrix$i, j=constr_matrix$j, x=constr_matrix$v,
+		model$A <- Matrix::sparseMatrix(i=constr_matrix$i, j=constr_matrix$j, x=constr_matrix$v,
            		dims=c(constr_matrix$nrow, constr_matrix$ncol))
 		model$obj <- obj
 		model$modelsense <- "max"
@@ -299,8 +341,8 @@ ddhw_convex <- function(split_sorted_pvalues, alpha, m_groups, lambda=Inf, lp_so
 		model$ub         <- 2
 		model$sense      <- '<'
 
-		params <- list(OutputFlag=1, Method=2)
-		res <- gurobi(model, params)
+		params <- list(OutputFlag=1)
+		res <- gurobi::gurobi(model, params)
 		sol <- res$x
 		solver_status <- res$status
 
@@ -313,24 +355,24 @@ ddhw_convex <- function(split_sorted_pvalues, alpha, m_groups, lambda=Inf, lp_so
 		#if (is.infinite(node_limit)) node_limit <- -1
 		res <- lpsymphony::lpsymphony_solve_LP(obj, constr_matrix, rep("<=", nrow(constr_matrix)),
 			rhs, #bounds= rsymphony_bounds,
-			max = T, verbosity = -2, first_feasible = FALSE)
+			max = TRUE, verbosity = -2, first_feasible = FALSE)
 		sol <- res$solution
 		solver_status <- res$status
 	} else {
 		stop("Only gurobi and lpsymphony solvers currently supported.")
 	}
 
-	# catch negative weights due to numerical rounding
+	# catch negative thresholds due to numerical rounding
 	ts <- pmax(sol[(1:nbins)+nbins],0)
-	ws <- thresholds_to_weights(ts, m_groups)	#ts/sum(ts)*nbins
-
+	ws <- thresholds_to_weights(ts, m_groups)	#\approx ts/sum(ts)*nbins
 
 
 	return(list(ws=ws))
 }
 
 
-presorted_grenander <- function(sorted_pvalues, quiet=T){
+#' @importFrom fdrtool gcmlcm
+presorted_grenander <- function(sorted_pvalues, quiet=TRUE){
   	n  <- length(sorted_pvalues)
   	unique_pvalues <- unique(sorted_pvalues)
   	ecdf_values <- cumsum(tabulate(match(sorted_pvalues, unique_pvalues)))/n
@@ -340,7 +382,7 @@ presorted_grenander <- function(sorted_pvalues, quiet=T){
   		unique_pvalues <- c(0,unique_pvalues)
   		ecdf_values   <- c(0, ecdf_values)
   	}
-  	ll <- gcmlcm(unique_pvalues, ecdf_values, type="lcm")
+  	ll <- fdrtool::gcmlcm(unique_pvalues, ecdf_values, type="lcm")
 	ll$length <- length(ll$slope.knots)
 	ll$x.knots <- ll$x.knots[-ll$length]
   	ll$y.knots <- ll$y.knots[-ll$length]

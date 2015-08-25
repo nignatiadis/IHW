@@ -1,24 +1,31 @@
-Package: ddhw
+Package: DDHW
 Title: Data-Driven Hypothesis Weights
-Version: 0.1
-Authors@R: "Nikos Ignatiadis <nikos.ignatiadis01@gmail.com> [aut, cre]"
-Description: Modified BH-like procedure which takes p--values and covariates
-    (independent of the p--values under the Null) into account
+Version: 0.99.0
+Authors@R: person("Nikos", "Ignatiadis", email = "nikos.ignatiadis01@gmail.com",
+                  role = c("aut", "cre"))
+Description: Modified Benjamini Hochberg like procedure which takes p--values and covariates
+    (independent of the p--values under the Null) into account. This can increase power
+    in a plethora of applications.
 Depends:
-    R (>= 3.1.0),
-    lpsymphony,
-    fdrtool
+    R (>= 3.1.0)
 License: MIT
 LazyData: true
 Imports:
-    slam
+    methods,
+    graphics,
+    slam,
+    lpsymphony,
+    fdrtool
 Suggests:
     DESeq,
     DESeq2,
-    Biobase,
     airway,
-    pasilla,
     testthat,
+    gurobi,
+    Matrix,
+    BiocStyle,
     knitr,
-    gurobi
+    rmarkdown
 VignetteBuilder: knitr
+biocViews: MultipleComparisons
+
