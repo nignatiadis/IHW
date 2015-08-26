@@ -27,5 +27,5 @@ Suggests:
     knitr,
     rmarkdown
 VignetteBuilder: knitr
-biocViews: MultipleComparisons
+biocViews: MultipleComparison
 
