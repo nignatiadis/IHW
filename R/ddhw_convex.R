@@ -85,7 +85,7 @@ ddhw <- function(pvalues, filter_statistics, alpha,
 
 	if ((length(lambdas)== 1) & (lambdas[1] == "auto")){
 		# just a few for now until I get warm starts of the LP solvers to work
-		lambdas <- c(1, nbins/8, nbins/4, nbins/2, nbins, Inf)
+		lambdas <- c(0, 1, nbins/8, nbins/4, nbins/2, nbins, Inf)
 	}
 
 	if (filter_statistic_type =="ordinal" & is.numeric(filter_statistics)){
@@ -259,20 +259,23 @@ ddhw_internal <- function(sorted_groups, sorted_pvalues, alpha, lambdas,
 #' @importFrom lpsymphony lpsymphony_solve_LP
 ddhw_convex <- function(split_sorted_pvalues, alpha, m_groups, lambda=Inf, lp_solver="gurobi", quiet=quiet){
 
+	nbins <- length(split_sorted_pvalues)
+
+	if (lambda==0){
+		ws <- rep(1, nbins)
+		return(list(ws=ws))
+	}
+
+
 	# preprocessing:  Set very low p-values to 0, otherwise LP solvers have problems due to numerical instability
 	# Note: This only affects the internal optimization, the higher level functions will
 	# still return adjusted pvalues based on the original p-values
+
 	split_sorted_pvalues <- lapply(split_sorted_pvalues, function(x) ifelse(x > 10^(-20), x, 0))
-	nbins <- length(split_sorted_pvalues)
 	m <- sum(m_groups)
 
 	if (nbins != length(m_groups)){
 		stop("length of m_groups should be equal to number of bins")
-	}
-
-	if (lambda==0){
-		ws <- rep(1, m_groups)
-		return(list(ws=ws))
 	}
 
 	#lapply grenander...
