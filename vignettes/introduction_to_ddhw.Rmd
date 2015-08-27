@@ -11,7 +11,7 @@ vignette: >
 
 # Introduction
 
-A classical multiple testing procedure takes a set of p-values and then calculates adjusted p-values. Given a significance level $\alpha$, one can then declare the significant (rejected) hypotheses. In R this is most commonly done with the p.adjust function. 
+A classical multiple testing procedure takes a set of p-values and then calculates adjusted p-values. Given a significance level $\alpha$, one can then declare the significant (rejected) hypotheses. In R this is most commonly done with the p.adjust function.
 
 Similarly, DDHW is also a multiple testing procedure, but beyond the p-values, it also requires a covariate (filter statistic) which is independent of the p-values under the null hypothesis. Therefore the basic input of DDHW is the following
 
@@ -20,6 +20,8 @@ Similarly, DDHW is also a multiple testing procedure, but beyond the p-values, i
 * A signifance level $\alpha \in (0,1)$ at which the False Discovery Rate should be controlled.
 
 DDHW then calculates weights for each p-value and also a vector of rejected hypothesis at the specified significance level. Roughly speaking, the weights allow different prioritization of the individual hypotheses, based on their covariate.
+
+To be more precise, assume we have $m$ different hypothesis tests: Then the multiple testing weights are non-negative random variables $w_i \geq 0$ such that $\sum_{i=1}^m w_i = m$. We then define the weighted p-values as $P^\text{weighted}_i = \frac{P_i}{w_i}$ and then plug these weighted p-values (instead of the p-values) into the Benjamini Hochberg procedure. This means that if $w_i > 1$, then it is easier to reject hypothesis $i$.
 
 If this covariate also happens to be informative about the power of the individual tests, then we can actually gain a lot of power compared to an unweighted method (an unweighted method is a weighted method where all tests are assigned weight 1).
 
@@ -85,6 +87,8 @@ head(weights(ddhw_res))
 Basically, a hypothesis with weight > 1 gets prioritized in the testing procedure and the higher the weight the higher the prioritization. On the other hand, a hypothesis with weight equal to 0 cannot be rejected and essentially is filtered out of the procedure.
 
 Internally, what happened was the following: We split the hypotheses into $n$ different strata based on increasing value of baseMean and we also randomly split them into $k$ folds (here $k=5$). Then, for each combination of folds + stratum, we learned the weights. The discretization into strata facilitates the estimation of the distribution function conditionally on the covariate and the internal optimization which estimates the weights. The division into random folds helps us to avoid "overfitting" the data, something which would result in a loss of control of the False Discovery Rate.
+
+In particular, each hypothesis test gets assigned a weight depending on the combination of its assigned fold and its stratum.
 
 We can also see this internal representation of the weights as a ($n$ X $k$) matrix:
 

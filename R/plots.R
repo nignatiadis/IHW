@@ -23,11 +23,10 @@ setGeneric("plot_ddhw", function(x, ...) standardGeneric("plot_ddhw"))
 #'    ddhw_res <- ddhw(pvalue, X, .1)
 #'	  plot_ddhw(ddhw_res)
 #'
-#' @importFrom graphics plot
 #' @export
 setMethod("plot_ddhw", signature="ddhwResult", 
 	function(x, x_axis="group", scale=x@filter_statistic_type){
-		if (requireNamespace("ggplot2", quietly=TRUE)){
+		if (requireNamespace("ggplot2", quietly=TRUE) & (requireNamespace("scales", quietly=TRUE))){
 			ws <- weights(x, levels_only=TRUE)
 			group_levels <- levels(groups_factor(x))
 			folds  <- factor(1:x@nfolds)
@@ -48,14 +47,15 @@ setMethod("plot_ddhw", signature="ddhwResult",
 				if (x_axis == "group"){
 					plt <-	ggplot2::ggplot(df, ggplot2::aes_string(x='stratum', y='weight', col='fold'))+
 								ggplot2::geom_point() +
-								ggplot2::geom_line()
+								ggplot2::geom_line() +
+								ggplot2::scale_x_continuous(breaks= scales::pretty_breaks())
 				} else if (x_axis == "ranks"){
 
 				}
 			}
 			return(plt)
 		} else {
-			stop("ddhwResult plotting method requires ggplot2.")
+			stop("ddhwResult plotting method requires ggplot2 and scales packages.")
 		}
 	})
 # plot weights vs Rank (ordinal)

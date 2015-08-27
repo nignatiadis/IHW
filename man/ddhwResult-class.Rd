@@ -18,6 +18,7 @@
 \alias{rejected_hypotheses,ddhwResult-method}
 \alias{rejections}
 \alias{rejections,ddhwResult-method}
+\alias{show,ddhwResult-method}
 \alias{thresholds}
 \alias{thresholds,ddhwResult-method}
 \alias{weighted_pvalues}
@@ -62,6 +63,8 @@ rejections(object, ...)
 \S4method{rejected_hypotheses}{ddhwResult}(object)
 
 \S4method{as.data.frame}{ddhwResult}(x)
+
+\S4method{show}{ddhwResult}(object)
 }
 \arguments{
 \item{object,x}{A ddhwResult object as returned by a call to ddhw(...)}
@@ -97,6 +100,8 @@ An S4 class to represent the DDHW output.
 \item \code{rejected_hypotheses}: Get a boolean vector of the rejected hypotheses
 
 \item \code{as.data.frame}: Convert ddhwResult object to data frame
+
+\item \code{show}: Convenience method to show ddhwResult object
 }}
 \section{Slots}{
 

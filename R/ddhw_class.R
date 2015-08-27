@@ -211,6 +211,16 @@ setMethod("as.data.frame", signature=c("ddhwResult"),
         x@df
       })
 
+#' @describeIn ddhwResult Convenience method to show ddhwResult object
+#' @importFrom methods show
+#' @export
+setMethod("show", signature(object="ddhwResult"), function(object) {
+  cat("ddhwResult object with", nrow(ddhw_res@df),"hypothesis tests \n")
+  cat("Nominal FDR control level:", alpha(ddhw_res),"\n")
+  cat("Split into", ddhw_res@nbins,"bins, based on an", ddhw_res@filter_statistic_type, "covariate\n")
+})
+
+
 #------------------ not exported stuff ----------------------------------------------------------------------------#
 
 ##### FDR estimate #############################################################

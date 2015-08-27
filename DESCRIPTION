@@ -12,11 +12,12 @@ License: Artistic-2.0
 LazyData: true
 Imports:
     methods,
-    graphics,
     slam,
     lpsymphony,
     fdrtool
 Suggests:
+    ggplot2,
+    scales,
     DESeq,
     DESeq2,
     airway,
