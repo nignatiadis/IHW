@@ -1,7 +1,8 @@
 ---
 title: "Introduction to DDHW"
 author: "N. Ignatiadis"
-date: "`r Sys.Date()`"
+date: "`r doc_date()`"
+package: "`r pkg_ver('DDHW')`"
 output: BiocStyle::html_document
 vignette: >
   %\VignetteIndexEntry{"Introduction to DDHW"}
@@ -110,8 +111,6 @@ In which cases is DDHW applicable? Whenever we have a covariate which is both in
 
 Below we summarize some examples, where such a covariate is available:
 
-Examples:
- 
  *  For row-wise $t$-tests  we can use the overall (row-wise) variance 
  *  For Rank tests  we can use any function that does not depend on order of arguments  
  *  In DESeq2, we can use baseMean, as illustrated above.
