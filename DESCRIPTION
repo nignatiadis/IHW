@@ -22,11 +22,12 @@ Suggests:
     DESeq2,
     airway,
     testthat,
-    gurobi,
     Matrix,
     BiocStyle,
     knitr,
     rmarkdown
+Enhances:
+    gurobi
 VignetteBuilder: knitr
 biocViews: MultipleComparison
 
