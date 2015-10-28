@@ -7,7 +7,7 @@ Description: Modified Benjamini Hochberg like procedure which takes p--values an
     (independent of the p--values under the Null) into account. This can increase power
     in a plethora of applications.
 Depends:
-    R (>= 3.1.0)
+    R (>= 3.2.0)
 License: Artistic-2.0
 LazyData: true
 Imports:

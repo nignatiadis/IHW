@@ -13,14 +13,14 @@
 #'
 #' @examples
 #'
-#'    set.seed(1)
-#'    X   <- runif(20000, min=0.5, max=4.5) #covariate
-#'    H   <- rbinom(20000,1,0.1)            #hypothesis true or false
-#'    Z   <- rnorm(20000, H*X)              #Z-score
-#'    pvalue <- 1-pnorm(Z)                  #pvalue
-#'    ddhw_res <- ddhw(pvalue, X, .1)
-#'    rejections(ddhw_res)
-#'    colnames(as.data.frame(ddhw_res))
+#' set.seed(1)
+#' X   <- runif(20000, min=0.5, max=4.5) #covariate
+#' H   <- rbinom(20000,1,0.1)            #hypothesis true or false
+#' Z   <- rnorm(20000, H*X)              #Z-score
+#' pvalue <- 1-pnorm(Z)                  #pvalue
+#' ddhw_res <- ddhw(pvalue, X, .1)
+#' rejections(ddhw_res)
+#' colnames(as.data.frame(ddhw_res))
 #'
 #' @seealso ddhw, plot_ddhw
 #' @import methods
@@ -187,14 +187,8 @@ rejected_hypotheses.ddhwResult <- function(object){
   adj_pvalues(object) <= alpha(object)
 }
 
-
-#' Generic function for multiple testing procedures
-#' Returns boolean vector of rejected hypotheses
-#' @param  object Multiple testing procedure object (e.g. ddhwResult)
-#' @param ... Arguments passed to individual methods
-#' @return boolean vector of rejected hypotheses
-#' @export
-rejected_hypotheses <- function(object,...) UseMethod("rejected_hypotheses")
+#' @rdname ddhwResult-class
+setGeneric("rejected_hypotheses", function(object,...) standardGeneric("rejected_hypotheses"))
 
 #' @describeIn ddhwResult Get a boolean vector of the rejected hypotheses
 #' @export

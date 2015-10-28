@@ -2,7 +2,6 @@
 
 export(ddhw)
 export(get_bh_threshold)
-export(rejected_hypotheses)
 exportMethods(adj_pvalues)
 exportMethods(alpha)
 exportMethods(as.data.frame)

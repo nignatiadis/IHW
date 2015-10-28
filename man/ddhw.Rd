@@ -53,11 +53,11 @@ power.
 }
 \examples{
 set.seed(1)
-   X   <- runif(20000, min=0.5, max=4.5) #covariate
-   H   <- rbinom(20000,1,0.1)            #hypothesis true or false
-   Z   <- rnorm(20000, H*X)              #Z-score
-   pvalue <- 1-pnorm(Z)                  #pvalue
-   ddhw_res <- ddhw(pvalue, X, .1)
+X   <- runif(20000, min=0.5, max=4.5) #covariate
+H   <- rbinom(20000,1,0.1)            #hypothesis true or false
+Z   <- rnorm(20000, H*X)              #Z-score
+pvalue <- 1-pnorm(Z)                  #pvalue
+ddhw_res <- ddhw(pvalue, X, .1)
 }
 \seealso{
 ddhwResult, plot_ddhw

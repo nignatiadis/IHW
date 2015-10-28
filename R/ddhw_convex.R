@@ -16,6 +16,8 @@
 #' @param nfolds Number of folds into which the p-values will be split for the pre-validation procedure
 #' @param nfolds_internal  Within each fold, a second  (nested) layer of cross-validation can be conducted to choose a good
 #'              regularization parameter. This parameter controls the number of nested folds.
+#' @param nsplits_internal  Integer, how many times to repeat the nfolds_internal splitting. Can lead to better regularization
+#'              parameter selection but makes DDHW a lot slower.
 #' @param lambdas  Numeric vector which defines the grid of possible regularization parameters.
 #'				Use "auto" for automatic selection.
 #' @param seed Integer or NULL. Split of hypotheses into folds is done randomly. To have output of the function be reproducible, 
@@ -30,12 +32,12 @@
 #' 
 #' @examples
 #'
-#'    set.seed(1)
-#'    X   <- runif(20000, min=0.5, max=4.5) #covariate
-#'    H   <- rbinom(20000,1,0.1)            #hypothesis true or false
-#'    Z   <- rnorm(20000, H*X)              #Z-score
-#'    pvalue <- 1-pnorm(Z)                  #pvalue
-#'    ddhw_res <- ddhw(pvalue, X, .1)
+#' set.seed(1)
+#' X   <- runif(20000, min=0.5, max=4.5) #covariate
+#' H   <- rbinom(20000,1,0.1)            #hypothesis true or false
+#' Z   <- rnorm(20000, H*X)              #Z-score
+#' pvalue <- 1-pnorm(Z)                  #pvalue
+#' ddhw_res <- ddhw(pvalue, X, .1)
 #'
 #'
 #' @export
@@ -45,6 +47,7 @@ ddhw <- function(pvalues, filter_statistics, alpha,
 						quiet =TRUE ,
 						nfolds = 5L,
 						nfolds_internal = 5L,
+						nsplits_internal=1L,
 						lambdas = "auto",
 						seed = 1L,
 						lp_solver="lpsymphony",
@@ -103,7 +106,7 @@ ddhw <- function(pvalues, filter_statistics, alpha,
 
 	# once we have groups, check whether they include enough p-values
 	if (any(table(groups) < 1000)){
-		stop("Data-driven choice of weights requires at least 1000 p-values per stratum.")
+		message("In general, data-driven choice of weights requires at least 1000 p-values per stratum.")
 	}
 
 	group_levels <- levels(groups)
@@ -114,11 +117,14 @@ ddhw <- function(pvalues, filter_statistics, alpha,
 	sorted_groups <- groups[order_pvalues]
 	sorted_pvalues <- pvalues[order_pvalues]
 
+	if (!is.null(seed)) set.seed(as.integer(seed)) #seed
+
 	res <- ddhw_internal(sorted_groups, sorted_pvalues, alpha, lambdas,
 						quiet=quiet,
 						nfolds=nfolds,
 						nfolds_internal=nfolds_internal,
-						seed=seed,
+						nsplits_internal=nsplits_internal,
+						seed=NULL,
 						lp_solver=lp_solver,
 
 						...)
@@ -166,8 +172,9 @@ ddhw <- function(pvalues, filter_statistics, alpha,
 ddhw_internal <- function(sorted_groups, sorted_pvalues, alpha, lambdas,
 							    seed=NULL,
 								quiet=TRUE,
-								nfolds = 10,
+								nfolds = 10L,
 								nfolds_internal = nfolds,
+								nsplits_internal = 1L,
 								lp_solver="lpsymphony",
 								debug_flag=FALSE){
 
@@ -207,18 +214,20 @@ ddhw_internal <- function(sorted_groups, sorted_pvalues, alpha, lambdas,
 
 		# TODO replace for loop by single call to ddhw_convex with warm starts
 		if (length(lambdas) > 1){
-			rjs  <- rep(NA, length(lambdas))
+			rjs  <- matrix(NA, nrow=length(lambdas), ncol=nsplits_internal)
 			for (k in 1:length(lambdas)){
 				lambda <- lambdas[k]
-				# To consider: internal nfolds does not have to be the same, could be 2 for speedup
-				rjs[k] <- ddhw_internal(filtered_sorted_groups, filtered_sorted_pvalues, alpha, lambda,
-									    seed=seed, quiet=quiet,
-									    nfolds=nfolds_internal, lp_solver=lp_solver)$rjs
+				for (l in 1:nsplits_internal){
+					# To consider: internal nfolds does not have to be the same, could be 2 for speedup
+					rjs[k,l] <- ddhw_internal(filtered_sorted_groups, filtered_sorted_pvalues, alpha, lambda,
+									    	seed=NULL, quiet=quiet,
+									    	nfolds=nfolds_internal, lp_solver=lp_solver)$rjs
+				}
 				if (debug_flag==TRUE){
-					rjs_path_mat[i,k] <- rjs[k]
+					rjs_path_mat[i,k] <- rjs[k] #only works for nsplits_internal currently
 				}
 			}
-			lambda <- lambdas[which.max(rjs)]
+			lambda <- lambdas[which.max(apply(rjs,1, mean))]
 		} else if (length(lambdas) == 1){
 			lambda <- lambdas
 		} else {
@@ -369,7 +378,7 @@ ddhw_convex <- function(split_sorted_pvalues, alpha, m_groups, lambda=Inf, lp_so
 	ts <- pmax(sol[(1:nbins)+nbins],0)
 	ws <- thresholds_to_weights(ts, m_groups)	#\approx ts/sum(ts)*nbins
 
-
+	# return matrix as follows: nbins x nlambdas)
 	return(list(ws=ws))
 }
 

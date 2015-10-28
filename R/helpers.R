@@ -1,4 +1,4 @@
-
+  
 
 groups_by_filter <- function(filter_statistic, nbins){
 	rfs <- rank(filter_statistic, ties.method="first")/length(filter_statistic)
