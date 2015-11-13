@@ -1,13 +1,13 @@
 # plot weights VS group (categorical)
 
 
-#' Convenience function to plot weights learned by DDHW method
+#' Convenience function to plot weights learned by ihw method
 #'
-#' @param x ddhwResult Object
+#' @param x ihwResult Object
 #' @param ... additional arguments passed on to individual methods
-setGeneric("plot_ddhw", function(x, ...) standardGeneric("plot_ddhw"))
+setGeneric("plot_ihw", function(x, ...) standardGeneric("plot_ihw"))
 
-#' @describeIn plot_ddhw
+#' @describeIn plot_ihw
 #' @param x_axis Character, currently only "group" supported.
 #' @param scale  Character, "ordinal" or "nominal"
 #'
@@ -20,11 +20,11 @@ setGeneric("plot_ddhw", function(x, ...) standardGeneric("plot_ddhw"))
 #'    H   <- rbinom(20000,1,0.1)            #hypothesis true or false
 #'    Z   <- rnorm(20000, H*X)              #Z-score
 #'    pvalue <- 1-pnorm(Z)                  #pvalue
-#'    ddhw_res <- ddhw(pvalue, X, .1)
-#'	  plot_ddhw(ddhw_res)
+#'    ihw_res <- ihw(pvalue, X, .1)
+#'	  plot_ihw(ihw_res)
 #'
 #' @export
-setMethod("plot_ddhw", signature="ddhwResult", 
+setMethod("plot_ihw", signature="ihwResult", 
 	function(x, x_axis="group", scale=x@filter_statistic_type){
 		if (requireNamespace("ggplot2", quietly=TRUE) & (requireNamespace("scales", quietly=TRUE))){
 			ws <- weights(x, levels_only=TRUE)
@@ -55,7 +55,7 @@ setMethod("plot_ddhw", signature="ddhwResult",
 			}
 			return(plt)
 		} else {
-			stop("ddhwResult plotting method requires ggplot2 and scales packages.")
+			stop("ihwResult plotting method requires ggplot2 and scales packages.")
 		}
 	})
 # plot weights vs Rank (ordinal)

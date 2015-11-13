@@ -1,7 +1,7 @@
-#' DDHW: Data-Driven Hypothesis Weights
+#' ihw: Independent Hypothesis Weighting
 #'
 #' Given a vector of p-values, a vector of filter-statistics which are independent of the p-values under the null hypothesis and
-#' a nominal significance level alpha, DDHW learns multiple testing weights and then applies the weighted Benjamini Hochberg 
+#' a nominal significance level alpha, ihw learns multiple testing weights and then applies the weighted Benjamini Hochberg 
 #' procedure. When the filter-statistic is informative of the power of the individual tests, this procedure can increase
 #' power.
 #'
@@ -17,19 +17,19 @@
 #' @param nfolds_internal  Within each fold, a second  (nested) layer of cross-validation can be conducted to choose a good
 #'              regularization parameter. This parameter controls the number of nested folds.
 #' @param nsplits_internal  Integer, how many times to repeat the nfolds_internal splitting. Can lead to better regularization
-#'              parameter selection but makes DDHW a lot slower.
+#'              parameter selection but makes ihw a lot slower.
 #' @param lambdas  Numeric vector which defines the grid of possible regularization parameters.
 #'				Use "auto" for automatic selection.
 #' @param seed Integer or NULL. Split of hypotheses into folds is done randomly. To have output of the function be reproducible, 
 #'	we set a seed. Use NULL if you don't want a seed.
-#' @param lp_solver  Character ("lpsymphony" or "gurobi"). Internally, DDHW solves a sequence of linear programs, which
+#' @param lp_solver  Character ("lpsymphony" or "gurobi"). Internally, ihw solves a sequence of linear programs, which
 #'        can be solved with either of these solvers.
 #' @param return_internal Returns a lower level representation of the output (only useful for debugging purposes).
 #' @param ... Arguments passed to internal functions.
 #'
-#' @return A ddhwResult object.
-#' @seealso ddhwResult, plot_ddhw
-#' 
+#' @return A ihwResult object.
+#' @seealso ihwResult, plot_ihw
+#'
 #' @examples
 #'
 #' set.seed(1)
@@ -37,11 +37,11 @@
 #' H   <- rbinom(20000,1,0.1)            #hypothesis true or false
 #' Z   <- rnorm(20000, H*X)              #Z-score
 #' pvalue <- 1-pnorm(Z)                  #pvalue
-#' ddhw_res <- ddhw(pvalue, X, .1)
+#' ihw_res <- ihw(pvalue, X, .1)
 #'
 #'
 #' @export
-ddhw <- function(pvalues, filter_statistics, alpha,
+ihw <- function(pvalues, filter_statistics, alpha,
 						filter_statistic_type = "ordinal",
 						nbins = "auto",
 						quiet =TRUE ,
@@ -54,9 +54,9 @@ ddhw <- function(pvalues, filter_statistics, alpha,
 						return_internal=FALSE,
 						...){
 
-	# This function essentially wraps the lower level function ddhw_internal
+	# This function essentially wraps the lower level function ihw_internal
 	# e.g. takes care of NAs, sorts pvalues and then
-	# returns a nice ddhw object
+	# returns a nice ihw object
 
 	nfolds <- as.integer(nfolds)
 	nfolds_internal <- as.integer(nfolds_internal)
@@ -119,7 +119,7 @@ ddhw <- function(pvalues, filter_statistics, alpha,
 
 	if (!is.null(seed)) set.seed(as.integer(seed)) #seed
 
-	res <- ddhw_internal(sorted_groups, sorted_pvalues, alpha, lambdas,
+	res <- ihw_internal(sorted_groups, sorted_pvalues, alpha, lambdas,
 						quiet=quiet,
 						nfolds=nfolds,
 						nfolds_internal=nfolds_internal,
@@ -151,7 +151,7 @@ ddhw <- function(pvalues, filter_statistics, alpha,
 					 filter_statistic = filter_statistics,
 					 folds=as.factor(folds))
 
-	ddhw_obj <- new("ddhwResult",
+	ihw_obj <- new("ihwResult",
 		 			df = df,
 		 			weights = res$weight_matrix,
 		 			alpha = alpha,
@@ -164,12 +164,12 @@ ddhw <- function(pvalues, filter_statistics, alpha,
 		 			solver_information = list())
 
 
-	ddhw_obj
+	ihw_obj
 
 }
 
 # operate on pvalues which have already been sorted and without any NAs
-ddhw_internal <- function(sorted_groups, sorted_pvalues, alpha, lambdas,
+ihw_internal <- function(sorted_groups, sorted_pvalues, alpha, lambdas,
 							    seed=NULL,
 								quiet=TRUE,
 								nfolds = 10L,
@@ -212,14 +212,14 @@ ddhw_internal <- function(sorted_groups, sorted_pvalues, alpha, lambdas,
 		}
 		# within each fold do iterations to also find lambda
 
-		# TODO replace for loop by single call to ddhw_convex with warm starts
+		# TODO replace for loop by single call to ihw_convex with warm starts
 		if (length(lambdas) > 1){
 			rjs  <- matrix(NA, nrow=length(lambdas), ncol=nsplits_internal)
 			for (k in 1:length(lambdas)){
 				lambda <- lambdas[k]
 				for (l in 1:nsplits_internal){
 					# To consider: internal nfolds does not have to be the same, could be 2 for speedup
-					rjs[k,l] <- ddhw_internal(filtered_sorted_groups, filtered_sorted_pvalues, alpha, lambda,
+					rjs[k,l] <- ihw_internal(filtered_sorted_groups, filtered_sorted_pvalues, alpha, lambda,
 									    	seed=NULL, quiet=quiet,
 									    	nfolds=nfolds_internal, lp_solver=lp_solver)$rjs
 				}
@@ -242,7 +242,7 @@ ddhw_internal <- function(sorted_groups, sorted_pvalues, alpha, lambdas,
 			m_groups_holdout_fold <- m_groups - sapply(filtered_split_sorted_pvalues, length)
 		}
 
-		res <- ddhw_convex(filtered_split_sorted_pvalues, alpha, m_groups_holdout_fold,
+		res <- ihw_convex(filtered_split_sorted_pvalues, alpha, m_groups_holdout_fold,
 						   lambda=lambda, lp_solver=lp_solver, quiet=quiet)
 
 		sorted_weights[sorted_folds == i] <- res$ws[sorted_groups[sorted_folds==i]]
@@ -266,7 +266,7 @@ ddhw_internal <- function(sorted_groups, sorted_pvalues, alpha, lambdas,
 
 #' @importFrom slam simple_triplet_zero_matrix simple_triplet_matrix
 #' @importFrom lpsymphony lpsymphony_solve_LP
-ddhw_convex <- function(split_sorted_pvalues, alpha, m_groups, lambda=Inf, lp_solver="gurobi", quiet=quiet){
+ihw_convex <- function(split_sorted_pvalues, alpha, m_groups, lambda=Inf, lp_solver="gurobi", quiet=quiet){
 
 	nbins <- length(split_sorted_pvalues)
 

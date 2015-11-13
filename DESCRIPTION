@@ -1,5 +1,5 @@
-Package: DDHW
-Title: Data-Driven Hypothesis Weights
+Package: IHW
+Title: Independent Hypothesis Weighting
 Version: 0.99.0
 Authors@R: person("Nikos", "Ignatiadis", email = "nikos.ignatiadis01@gmail.com",
                   role = c("aut", "cre"))
