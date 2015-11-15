@@ -1,0 +1,17 @@
+# Sample .travis.yml for R projects
+
+language: r
+warnings_are_errors: false
+sudo: required
+
+bioc_required: true
+bioc_packages:
+  - BiocCheck
+r_github_packages:vladchimescu/lpsymphony/lpsymphony
+
+after_script:
+  - ls -lah
+  - FILE=$(ls -1t *.tar.gz | head -n 1)
+  - Rscript -e "library(BiocCheck); BiocCheck(\"${FILE}\")"
+
+
