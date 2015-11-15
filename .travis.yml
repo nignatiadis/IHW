@@ -7,7 +7,8 @@ sudo: required
 bioc_required: true
 bioc_packages:
   - BiocCheck
-r_github_packages:vladchimescu/lpsymphony/lpsymphony
+r_github_packages:
+  - vladchimescu/lpsymphony/lpsymphony
 
 after_script:
   - ls -lah
