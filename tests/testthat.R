@@ -1,4 +1,4 @@
 library("testthat")
-library("DDHW")
+library("IHW")
 
-test_check("DDHW")
+test_check("IHW")
