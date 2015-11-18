@@ -357,6 +357,15 @@ ihw_convex <- function(split_sorted_pvalues, alpha, m_groups, lambda=Inf, lp_sol
 	if (!quiet) message("Starting to solve LP.")
 
 	if (lp_solver == "gurobi"){
+
+		if (!requireNamespace("gurobi", quietly=TRUE)){
+			stop("Gurobi solver appears not be installed. Please use lpsymphony or install gurobi.")
+		}
+
+		if (!requireNamespace("Matrix", quietly=TRUE)){
+			stop("Matrix package required to use gurobi in IHW.")
+		}
+
 		model <- list()
 		model$A <- Matrix::sparseMatrix(i=constr_matrix$i, j=constr_matrix$j, x=constr_matrix$v,
            		dims=c(constr_matrix$nrow, constr_matrix$ncol))
@@ -421,8 +430,6 @@ presorted_grenander <- function(sorted_pvalues, quiet=TRUE){
 # needed for reproducibility of manuscript
 # to demonstrate that "naive IHW" algorithm does not control type-I error
 
-
-#' @importFrom Matrix sparseMatrix
 ihw_milp <- function(split_sorted_pvalues, alpha, m_groups, lambda=Inf, lp_solver="gurobi", 
 		quiet=quiet, 
 		optim_pval_threshold=1,
@@ -687,6 +694,10 @@ ihw_milp <- function(split_sorted_pvalues, alpha, m_groups, lambda=Inf, lp_solve
 
 		if (!requireNamespace("gurobi", quietly=TRUE)){
 			stop("Gurobi solver appears not be installed. Please use lpsymphony or install gurobi.")
+		}
+
+		if (!requireNamespace("Matrix", quietly=TRUE)){
+			stop("Matrix package required to use gurobi in IHW.")
 		}
 		# keep code for commercial solver for now
 		#speed up compared to Symphony appears to be at least ~2-10, depending on problem
