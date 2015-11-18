@@ -7,7 +7,8 @@
 ihw(pvalues, filter_statistics, alpha, filter_statistic_type = "ordinal",
   nbins = "auto", quiet = TRUE, nfolds = 5L, nfolds_internal = 5L,
   nsplits_internal = 1L, lambdas = "auto", seed = 1L,
-  lp_solver = "lpsymphony", return_internal = FALSE, ...)
+  distrib_estimator = "grenander", lp_solver = "lpsymphony",
+  return_internal = FALSE, ...)
 }
 \arguments{
 \item{pvalues}{Numeric vector of unadjusted p-values.}
@@ -37,6 +38,9 @@ Use "auto" for automatic selection.}
 
 \item{seed}{Integer or NULL. Split of hypotheses into folds is done randomly. To have output of the function be reproducible,
 we set a seed. Use NULL if you don't want a seed.}
+
+\item{distrib_estimator}{Character ("grenander" or "ECDF"). Only use this if you know what you are doing. ECDF with nfolds > 1
+or lp_solver == "lpsymphony" will in general be excessively slow, except for very small problems.}
 
 \item{lp_solver}{Character ("lpsymphony" or "gurobi"). Internally, ihw solves a sequence of linear programs, which
 can be solved with either of these solvers.}
