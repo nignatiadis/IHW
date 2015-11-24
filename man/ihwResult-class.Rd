@@ -7,6 +7,7 @@
 \alias{alpha}
 \alias{alpha,ihwResult-method}
 \alias{as.data.frame,ihwResult-method}
+\alias{as.data.frame.ihwResult}
 \alias{filter_statistics}
 \alias{filter_statistics,ihwResult-method}
 \alias{groups_factor}
@@ -65,7 +66,11 @@ rejected_hypotheses(object, ...)
 
 \S4method{rejected_hypotheses}{ihwResult}(object)
 
-\S4method{as.data.frame}{ihwResult}(x)
+\method{as.data.frame}{ihwResult}(x, row.names = NULL, optional = FALSE,
+  ...)
+
+\S4method{as.data.frame}{ihwResult}(x, row.names = NULL, optional = FALSE,
+  ...)
 
 \S4method{show}{ihwResult}(object)
 }
@@ -102,7 +107,7 @@ An S4 class to represent the ihw output.
 
 \item \code{rejected_hypotheses}: Get a boolean vector of the rejected hypotheses
 
-\item \code{as.data.frame}: Convert ihwResult object to data frame
+\item \code{as.data.frame}: Coerce ihwResult to data frame
 
 \item \code{show}: Convenience method to show ihwResult object
 }}

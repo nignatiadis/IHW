@@ -198,12 +198,13 @@ setMethod("rejected_hypotheses", signature(object="ihwResult"),
 
 #--------------- convenience methods ------------------------------------------------------------------------------#
 
+#' @rdname ihwResult-class
 #' @export
-as.data.frame.ihwResult <-function(x){
+as.data.frame.ihwResult <-function(x,row.names=NULL, optional=FALSE, ...){
         x@df
       }
 
-#' @describeIn ihwResult Convert ihwResult object to data frame
+#' @describeIn ihwResult Coerce ihwResult to data frame
 #' @export
 setMethod("as.data.frame", "ihwResult",as.data.frame.ihwResult)
 
