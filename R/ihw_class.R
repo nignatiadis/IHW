@@ -40,7 +40,7 @@ ihwResult <- setClass("ihwResult",
 
 #-----------------------------adjusted p-values extraction---------------------------------------------------------#
 adj_pvalues.ihwResult <- function(object){
-  object@df$padj
+  object@df$adj_pvalue
 }
 
 #' @rdname ihwResult-class
@@ -58,7 +58,7 @@ weights.ihwResult <-function(object, levels_only = FALSE){
   if (levels_only) {
     object@weights
   } else {
-    object@df$weights #TODO: Storing redundant information right now
+    object@df$weight #TODO: Storing redundant information right now
   }
 }
 
@@ -198,12 +198,14 @@ setMethod("rejected_hypotheses", signature(object="ihwResult"),
 
 #--------------- convenience methods ------------------------------------------------------------------------------#
 
+#' @export
+as.data.frame.ihwResult <-function(x){
+        x@df
+      }
+
 #' @describeIn ihwResult Convert ihwResult object to data frame
 #' @export
-setMethod("as.data.frame", signature=c("ihwResult"),
-      function(x){
-        x@df
-      })
+setMethod("as.data.frame", "ihwResult",as.data.frame.ihwResult)
 
 #' @describeIn ihwResult Convenience method to show ihwResult object
 #' @importFrom methods show

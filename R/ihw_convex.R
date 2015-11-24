@@ -147,12 +147,12 @@ ihw <- function(pvalues, filter_statistics, alpha,
 
 
 	df <- data.frame(pvalue = pvalues,
-					 padj = adj_pvalues,
-				     weights = weights,
-				     weighted_pvalues = weighted_pvalues,
+					 adj_pvalue = adj_pvalues,
+				     weight = weights,
+				     weighted_pvalue = weighted_pvalues,
 					 group= groups,
 					 filter_statistic = filter_statistics,
-					 folds=as.factor(folds))
+					 fold=as.factor(folds))
 
 	ihw_obj <- new("ihwResult",
 		 			df = df,
