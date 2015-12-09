@@ -66,8 +66,7 @@ rejected_hypotheses(object, ...)
 
 \S4method{rejected_hypotheses}{ihwResult}(object)
 
-\method{as.data.frame}{ihwResult}(x, row.names = NULL, optional = FALSE,
-  ...)
+as.data.frame.ihwResult(x, row.names = NULL, optional = FALSE, ...)
 
 \S4method{as.data.frame}{ihwResult}(x, row.names = NULL, optional = FALSE,
   ...)

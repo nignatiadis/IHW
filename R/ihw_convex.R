@@ -85,28 +85,35 @@ ihw <- function(pvalues, filter_statistics, alpha,
     	stop("Filter statistics corresponding to non-NA p-values should never be NA. Aborting.")
     }
 
-	if (nbins == "auto"){
-		nbins <- min(300, floor(length(pvalues)/1500)) # rule of thumb..
+
+	if (filter_statistic_type =="ordinal" & is.numeric(filter_statistics)){
+		groups <- as.factor(groups_by_filter(filter_statistics, nbins))
+		penalty <- "total variation"
+		if (nbins == "auto"){
+			nbins <- min(300, floor(length(pvalues)/1500)) # rule of thumb..
+		}
+	} else if (is.factor(filter_statistics)){
+		groups <- filter_statistics
+		if (nbins != "auto" & nbins != nlevels(groups)){
+			warning("Overwriting manually specified nbins, since it has to equal the number
+				of levels for categorical covariates")
+		}
+
+		nbins <- nlevels(groups)
+
+		if (filter_statistic_type == "nominal"){
+			penalty <- "uniform deviation"
+		} else if (filter_statistic_type == "ordinal") {
+			penalty <- "total variation"
+		}
+	} else {
+		stop("filter_statistics are not of the appropriate type")
 	}
 
 	if ((length(lambdas)== 1) & (lambdas[1] == "auto")){
 		# just a few for now until I get warm starts of the LP solvers to work
 		lambdas <- c(0, 1, nbins/8, nbins/4, nbins/2, nbins, Inf)
 	}
-
-	if (filter_statistic_type =="ordinal" & is.numeric(filter_statistics)){
-		groups <- groups_by_filter(filter_statistics, nbins)
-	} else if (is.factor(filter_statistics)){
-		groups <- filter_statistics
-		nbins <- nlevels(groups)
-		if (filter_statistic_type == "nominal"){
-			lambdas <- Inf
-		}
-	} else {
-		stop("filter_statistics are not of the appropriate type")
-	}
-
-
 	# once we have groups, check whether they include enough p-values
 	if (any(table(groups) < 1000)){
 		message("In general, data-driven choice of weights requires at least 1000 p-values per stratum.")
@@ -123,6 +130,7 @@ ihw <- function(pvalues, filter_statistics, alpha,
 	if (!is.null(seed)) set.seed(as.integer(seed)) #seed
 
 	res <- ihw_internal(sorted_groups, sorted_pvalues, alpha, lambdas,
+						penalty=penalty,
 						quiet=quiet,
 						nfolds=nfolds,
 						nfolds_internal=nfolds_internal,
@@ -161,11 +169,10 @@ ihw <- function(pvalues, filter_statistics, alpha,
 					nbins = as.integer(nbins),
 					nfolds = nfolds,
 					regularization_term = res$fold_lambdas,
-					penalty = "total variation",
+					penalty = penalty,
 					filter_statistic_type = filter_statistic_type,
 					reg_path_information = data.frame(),
 		 			solver_information = list())
-
 
 	ihw_obj
 
@@ -173,6 +180,7 @@ ihw <- function(pvalues, filter_statistics, alpha,
 
 # operate on pvalues which have already been sorted and without any NAs
 ihw_internal <- function(sorted_groups, sorted_pvalues, alpha, lambdas,
+							    penalty="total variation",
 							    seed=NULL,
 								quiet=TRUE,
 								nfolds = 10L,
@@ -251,10 +259,10 @@ ihw_internal <- function(sorted_groups, sorted_pvalues, alpha, lambdas,
 
 		if (distrib_estimator=="grenander"){
 			res <- ihw_convex(filtered_split_sorted_pvalues, alpha, m_groups_holdout_fold,
-						   lambda=lambda, lp_solver=lp_solver, quiet=quiet,...)
+						   penalty=penalty, lambda=lambda, lp_solver=lp_solver, quiet=quiet,...)
 		} else if (distrib_estimator == "ECDF"){
 			res <- ihw_milp(filtered_split_sorted_pvalues, alpha, m_groups_holdout_fold,
-				           lambda=lambda, lp_solver=lp_solver, ...)
+				           penalty=penalty, lambda=lambda, lp_solver=lp_solver, ...)
 		} else {
 			stop("This type of distribution estimator is not available.")
 		}
@@ -280,7 +288,8 @@ ihw_internal <- function(sorted_groups, sorted_pvalues, alpha, lambdas,
 
 #' @importFrom slam simple_triplet_zero_matrix simple_triplet_matrix
 #' @importFrom lpsymphony lpsymphony_solve_LP
-ihw_convex <- function(split_sorted_pvalues, alpha, m_groups, lambda=Inf, lp_solver="gurobi", quiet=quiet){
+ihw_convex <- function(split_sorted_pvalues, alpha, m_groups, 
+		penalty="total variation", lambda=Inf, lp_solver="gurobi", quiet=quiet){
 
 	nbins <- length(split_sorted_pvalues)
 
@@ -323,29 +332,59 @@ ihw_convex <- function(split_sorted_pvalues, alpha, m_groups, lambda=Inf, lp_sol
 	obj <- c(m_groups/m*nbins*rep(1,nbins), rep(0,nbins))
 
 	if (lambda < Inf){
-		# -f + t_g - t_{g-1} <= 0
-		i_fi <- rep(1:(nbins-1),3)
-		j_fi <-	c((nbins+2):(2*nbins), (nbins+1):(2*nbins-1), (2*nbins+1):(3*nbins-1))
-		v_fi <- c(rep(1,nbins-1), rep(-1,nbins-1), rep(-1, nbins-1))
-		absolute_val_constr_matrix_1 <- slam::simple_triplet_matrix(i_fi,j_fi,v_fi)
+		if (penalty == "total variation"){
+			# -f + t_g - t_{g-1} <= 0
+			i_fi <- rep(1:(nbins-1),3)
+			j_fi <-	c((nbins+2):(2*nbins), (nbins+1):(2*nbins-1), (2*nbins+1):(3*nbins-1))
+			v_fi <- c(rep(1,nbins-1), rep(-1,nbins-1), rep(-1, nbins-1))
+			absolute_val_constr_matrix_1 <- slam::simple_triplet_matrix(i_fi,j_fi,v_fi)
 
-		# -f - t_g + t_{g-1} <= 0
-		i_fi <- rep(1:(nbins-1),3)
-		j_fi <-	c((nbins+2):(2*nbins), (nbins+1):(2*nbins-1), (2*nbins+1):(3*nbins-1))
-		v_fi <- c(rep(-1,nbins-1), rep(1,nbins-1), rep(-1, nbins-1))
-		absolute_val_constr_matrix_2 <- slam::simple_triplet_matrix(i_fi,j_fi,v_fi)
+			# -f - t_g + t_{g-1} <= 0
+			i_fi <- rep(1:(nbins-1),3)
+			j_fi <-	c((nbins+2):(2*nbins), (nbins+1):(2*nbins-1), (2*nbins+1):(3*nbins-1))
+			v_fi <- c(rep(-1,nbins-1), rep(1,nbins-1), rep(-1, nbins-1))
+			absolute_val_constr_matrix_2 <- slam::simple_triplet_matrix(i_fi,j_fi,v_fi)
 
-		constr_matrix <- rbind(cbind(constr_matrix, slam::simple_triplet_zero_matrix(nconstraints, nbins-1,mode="double")),
+			constr_matrix <- rbind(cbind(constr_matrix, slam::simple_triplet_zero_matrix(nconstraints, nbins-1,mode="double")),
 							    absolute_val_constr_matrix_1,
 								absolute_val_constr_matrix_2)
 
-		obj <- c(obj, rep(0, nbins-1))
+			obj <- c(obj, rep(0, nbins-1))
 
-		total_variation_constr <- matrix(c(rep(0,nbins), -lambda*m_groups/m, rep(1,nbins-1)),nrow=1)
-		constr_matrix <- rbind(constr_matrix, total_variation_constr)
+			total_variation_constr <- matrix(c(rep(0,nbins), -lambda*m_groups/m, rep(1,nbins-1)),nrow=1)
+			constr_matrix <- rbind(constr_matrix, total_variation_constr)
 
-		rhs <- c(rhs,rep(0, 2*(nbins-1)),0) #add RHS for absolute differences and for total variation penalty
+			rhs <- c(rhs,rep(0, 2*(nbins-1)),0) #add RHS for absolute differences and for total variation penalty
 
+		} else if (penalty == "uniform deviation"){
+			# -f + m t_g - sum_g m_i t_i <= 0
+
+			absolute_val_constr_matrix_1 <- matrix(rep(-m_groups,nbins), nbins,nbins, byrow=T)
+			diag(absolute_val_constr_matrix_1) <- -m_groups + m
+			absolute_val_constr_matrix_1 <- cbind( slam::simple_triplet_zero_matrix(nbins, nbins,mode="double"),
+												   absolute_val_constr_matrix_1,
+										           -diag(nbins))
+
+			# -f - m t_g +  sum_g m_i t_i  <= 0
+
+			absolute_val_constr_matrix_2 <- matrix(rep(+m_groups,nbins), nbins,nbins, byrow=T)
+			diag(absolute_val_constr_matrix_2) <- m_groups - m
+			absolute_val_constr_matrix_2 <- cbind( slam::simple_triplet_zero_matrix(nbins, nbins,mode="double"),
+												   absolute_val_constr_matrix_2,
+										           -diag(nbins))
+
+			constr_matrix <- rbind(cbind(constr_matrix, slam::simple_triplet_zero_matrix(nconstraints, nbins,mode="double")),
+							    absolute_val_constr_matrix_1,
+								absolute_val_constr_matrix_2)
+
+			obj <- c(obj, rep(0, nbins))
+
+			total_variation_constr <- matrix(c(rep(0,nbins), -lambda*m_groups, rep(1,nbins)),nrow=1)
+			constr_matrix <- rbind(constr_matrix, total_variation_constr)
+
+			rhs <- c(rhs,rep(0, 2*nbins),0) #add RHS for absolute differences and for total variation penalty
+
+		}
 	}
 
 	# incorporate the FDR constraint
