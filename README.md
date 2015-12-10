@@ -1,4 +1,5 @@
 [![Travis-CI Build Status](https://travis-ci.org/nignatiadis/IHW.svg?branch=master)](https://travis-ci.org/nignatiadis/IHW)
+[![codecov.io](https://codecov.io/github/nignatiadis/IHW/coverage.svg?branch=master)](https://codecov.io/github/nignatiadis/IHW?branch=master)
 
 
 
