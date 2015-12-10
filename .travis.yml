@@ -9,8 +9,11 @@ bioc_packages:
   - BiocCheck
 r_github_packages:
   - vladchimescu/lpsymphony/lpsymphony
+  - jimhester/covr
+
 
 after_script:
+  - Rscript -e 'covr::codecov()'
   - ls -lah
   - FILE=$(ls -1t *.tar.gz | head -n 1)
   - Rscript -e "library(BiocCheck); BiocCheck(\"${FILE}\")"
