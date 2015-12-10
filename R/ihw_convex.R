@@ -87,11 +87,13 @@ ihw <- function(pvalues, filter_statistics, alpha,
 
 
 	if (filter_statistic_type =="ordinal" & is.numeric(filter_statistics)){
-		groups <- as.factor(groups_by_filter(filter_statistics, nbins))
-		penalty <- "total variation"
+
 		if (nbins == "auto"){
 			nbins <- min(300, floor(length(pvalues)/1500)) # rule of thumb..
 		}
+		groups <- as.factor(groups_by_filter(filter_statistics, nbins))
+		penalty <- "total variation"
+
 	} else if (is.factor(filter_statistics)){
 		groups <- filter_statistics
 		if (nbins != "auto" & nbins != nlevels(groups)){
