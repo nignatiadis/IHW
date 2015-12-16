@@ -212,9 +212,9 @@ setMethod("as.data.frame", "ihwResult",as.data.frame.ihwResult)
 #' @importFrom methods show
 #' @export
 setMethod("show", signature(object="ihwResult"), function(object) {
-  cat("ihwResult object with", nrow(ihw_res@df),"hypothesis tests \n")
-  cat("Nominal FDR control level:", alpha(ihw_res),"\n")
-  cat("Split into", ihw_res@nbins,"bins, based on an", ihw_res@filter_statistic_type, "covariate\n")
+  cat("ihwResult object with", nrow(object@df),"hypothesis tests \n")
+  cat("Nominal FDR control level:", alpha(object),"\n")
+  cat("Split into", object@nbins,"bins, based on an", object@filter_statistic_type, "covariate\n")
 })
 
 

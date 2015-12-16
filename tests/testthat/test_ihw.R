@@ -19,6 +19,9 @@ ihw_res2 <- ihw(sim$pvalue, sim$group, .1)
 
 expect_equal(rejections(ihw_res1), rejections(ihw_res2))
 
+# quick test for show method
+expect_equal(capture.output(ihw_res1), capture.output(ihw_res2))
+
 plot_ihw(ihw_res2)
 
 
