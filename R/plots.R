@@ -7,7 +7,7 @@
 #' @param ... additional arguments passed on to individual methods
 setGeneric("plot_ihw", function(x, ...) standardGeneric("plot_ihw"))
 
-#' @describeIn plot_ihw
+#' @describeIn plot_ihw Further arguments
 #' @param x_axis Character, currently only "group" supported.
 #' @param scale  Character, "ordinal" or "nominal"
 #'
@@ -21,10 +21,10 @@ setGeneric("plot_ihw", function(x, ...) standardGeneric("plot_ihw"))
 #'    Z   <- rnorm(20000, H*X)              #Z-score
 #'    pvalue <- 1-pnorm(Z)                  #pvalue
 #'    ihw_res <- ihw(pvalue, X, .1)
-#'	  plot_ihw(ihw_res)
+#'    plot_ihw(ihw_res)
 #'
 #' @export
-setMethod("plot_ihw", signature="ihwResult", 
+setMethod("plot_ihw", signature="ihwResult",
 	function(x, x_axis="group", scale=x@filter_statistic_type){
 		if (requireNamespace("ggplot2", quietly=TRUE) & (requireNamespace("scales", quietly=TRUE))){
 			ws <- weights(x, levels_only=TRUE)

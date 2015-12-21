@@ -1,8 +1,8 @@
-#' ihw: Independent Hypothesis Weighting
+#' ihw: Main function for Independent Hypothesis Weighting
 #'
 #' Given a vector of p-values, a vector of filter-statistics which are independent of the p-values under the null hypothesis and
-#' a nominal significance level alpha, ihw learns multiple testing weights and then applies the weighted Benjamini Hochberg 
-#' procedure. When the filter-statistic is informative of the power of the individual tests, this procedure can increase
+#' a nominal significance level alpha, IHW learns multiple testing weights and then applies the weighted Benjamini Hochberg 
+#' procedure. When the filter-statistic is informative of the power of the individual tests, this procedure increases
 #' power.
 #'
 #' @param pvalues  Numeric vector of unadjusted p-values.
@@ -24,7 +24,7 @@
 #'	we set a seed. Use NULL if you don't want a seed.
 #' @param distrib_estimator  Character ("grenander" or "ECDF"). Only use this if you know what you are doing. ECDF with nfolds > 1
 #'              or lp_solver == "lpsymphony" will in general be excessively slow, except for very small problems.
-#' @param lp_solver  Character ("lpsymphony" or "gurobi"). Internally, ihw solves a sequence of linear programs, which
+#' @param lp_solver  Character ("lpsymphony" or "gurobi"). Internally, IHW solves a sequence of linear programs, which
 #'        can be solved with either of these solvers.
 #' @param return_internal Returns a lower level representation of the output (only useful for debugging purposes).
 #' @param ... Arguments passed to internal functions.
@@ -44,7 +44,7 @@
 #'
 #' @export
 ihw <- function(pvalues, filter_statistics, alpha,
-						filter_statistic_type = "ordinal",
+						filter_statistic_type = c("ordinal","nominal"),
 						nbins = "auto",
 						quiet =TRUE ,
 						nfolds = 5L,
@@ -52,8 +52,8 @@ ihw <- function(pvalues, filter_statistics, alpha,
 						nsplits_internal=1L,
 						lambdas = "auto",
 						seed = 1L,
-						distrib_estimator = "grenander",
-						lp_solver="lpsymphony",
+						distrib_estimator = c("grenander","ECDF"),
+						lp_solver=c("lpsymphony","gurobi"),
 						return_internal=FALSE,
 						...){
 
@@ -723,7 +723,7 @@ ihw_milp <- function(split_sorted_pvalues, alpha, m_groups, lambda=Inf, lp_solve
 		res<- lpsymphony::lpsymphony_solve_LP(obj, full_triplet, rep(">=", nrows), 
 			model_rhs,
     		types = model_vtype, bounds= rsymphony_ub,
-			max = T, verbosity = -2, time_limit = time_limit,
+			max = TRUE, verbosity = -2, time_limit = time_limit,
 			node_limit = node_limit, gap_limit = ifelse(mip_gap <= 10^(-4), -1, mip_gap*100), #now default mip_gap=10^(-4) as in Gurobi while -1 default for Rsymphony
 			first_feasible = FALSE)
 		sol <- res$solution
@@ -763,7 +763,7 @@ ihw_milp <- function(split_sorted_pvalues, alpha, m_groups, lambda=Inf, lp_solve
 		# turns out that enforcing T_g >= t_g is numerically very hard in the context of this problem
 
 		params <- list(NumericFocus=3, FeasibilityTol=10^(-9), ScaleFlag=0 , Quad=1, IntFeasTol=10^(-9),
-							OutputFlag = 0, #Presolve=0,#10, 
+							OutputFlag = 0, #Presolve=0,#10,
 							Threads=threads,MIPFocus=MIPFocus,
 							MIPGap = mip_gap)
 
@@ -784,7 +784,7 @@ ihw_milp <- function(split_sorted_pvalues, alpha, m_groups, lambda=Inf, lp_solve
 	lengths <- cumsum(sapply(split_sorted_pvalues, length))
 	start_lengths <- c(1, lengths[-nbins]+1)
 
-	pidx_list <- mapply(function(start,end) sol[start:end], start_lengths,lengths, SIMPLIFY=F)
+	pidx_list <- mapply(function(start,end) sol[start:end], start_lengths,lengths, SIMPLIFY=FALSE)
 
 	get_threshold <- function(plist, pidx){
 		max_idx <- which.max(which(pidx==1))

@@ -1,0 +1,14 @@
+citEntry(entry="article",
+         title = "Data-driven hypothesis weighting increases detection power in big data analytics",
+         author = personList( as.person("Nikolaos Ignatiadis"),
+                              as.person("Bernd Klaus"),
+                              as.person("Judith Zaugg"),
+                              as.person("Wolfgang Huber")),
+         year = 2015,
+         journal = "bioRxiv",
+         doi = "10.1101/034330",
+         url = "http://dx.doi.org/10.1101/034330",
+         textVersion =
+         paste("Nikolaos Ignatiadis, Bernd Klaus, Judith Zaugg and Wolfgang Huber (2015):",
+               "Data-driven hypothesis weighting increases detection power in big data analytics",
+               "bioRxiv preprint" ) )
