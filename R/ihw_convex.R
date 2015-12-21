@@ -44,7 +44,7 @@
 #'
 #' @export
 ihw <- function(pvalues, filter_statistics, alpha,
-						filter_statistic_type = c("ordinal","nominal"),
+						filter_statistic_type = "ordinal",
 						nbins = "auto",
 						quiet =TRUE ,
 						nfolds = 5L,
@@ -52,8 +52,8 @@ ihw <- function(pvalues, filter_statistics, alpha,
 						nsplits_internal=1L,
 						lambdas = "auto",
 						seed = 1L,
-						distrib_estimator = c("grenander","ECDF"),
-						lp_solver=c("lpsymphony","gurobi"),
+						distrib_estimator = "grenander",
+						lp_solver="lpsymphony",
 						return_internal=FALSE,
 						...){
 

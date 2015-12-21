@@ -4,11 +4,11 @@
 \alias{ihw}
 \title{ihw: Main function for Independent Hypothesis Weighting}
 \usage{
-ihw(pvalues, filter_statistics, alpha, filter_statistic_type = c("ordinal",
-  "nominal"), nbins = "auto", quiet = TRUE, nfolds = 5L,
-  nfolds_internal = 5L, nsplits_internal = 1L, lambdas = "auto",
-  seed = 1L, distrib_estimator = c("grenander", "ECDF"),
-  lp_solver = c("lpsymphony", "gurobi"), return_internal = FALSE, ...)
+ihw(pvalues, filter_statistics, alpha, filter_statistic_type = "ordinal",
+  nbins = "auto", quiet = TRUE, nfolds = 5L, nfolds_internal = 5L,
+  nsplits_internal = 1L, lambdas = "auto", seed = 1L,
+  distrib_estimator = "grenander", lp_solver = "lpsymphony",
+  return_internal = FALSE, ...)
 }
 \arguments{
 \item{pvalues}{Numeric vector of unadjusted p-values.}
