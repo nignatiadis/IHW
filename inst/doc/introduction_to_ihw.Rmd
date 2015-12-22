@@ -15,7 +15,7 @@ vignette: >
 
 You will probably be familiar with multiple testing procedures that take a set of p-values and then calculate adjusted p-values. Given a significance level $\alpha$, one can then declare the significant (rejected) hypotheses. In R this is most commonly done with the p.adjust function.
 
-Similarly, IHW (Independent Hypothesis Weighting) is also a multiple testing procedure, but beyond the p-values, it also requires a covariate (filter statistic) which is independent of the p-values under the null hypothesis. Therefore the basic input of IHW is the following
+Similarly, IHW (Independent Hypothesis Weighting) is also a multiple testing procedure [@ignatiadis2015data], but beyond the p-values, it also requires a covariate (filter statistic) which is independent of the p-values under the null hypothesis. Therefore the basic input of IHW is the following
 
 * A vector of p-values
 * A vector of covariates (filter-statistics), independent of the p-values under the null hypothesis

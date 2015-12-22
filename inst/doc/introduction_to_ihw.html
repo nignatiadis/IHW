@@ -10,7 +10,7 @@
 
 <meta name="author" content="N. Ignatiadis" />
 
-<meta name="date" content="2015-11-24" />
+<meta name="date" content="2015-12-22" />
 
 <title>Introduction to IHW</title>
 
@@ -51,7 +51,7 @@ document.addEventListener("DOMContentLoaded", function() {
 <div id="header">
 <h1 class="title">Introduction to IHW</h1>
 <h4 class="author"><em>N. Ignatiadis</em></h4>
-<h4 class="date"><em>24 November 2015</em></h4>
+<h4 class="date"><em>22 December 2015</em></h4>
 </div>
 <h4 class="package">Package version: <span style="font-weight: normal">IHW 0.99.2</span></h4>
 
@@ -67,7 +67,7 @@ document.addEventListener("DOMContentLoaded", function() {
 <div id="introduction" class="section level1">
 <h1><span class="header-section-number">1</span> Introduction</h1>
 <p>You will probably be familiar with multiple testing procedures that take a set of p-values and then calculate adjusted p-values. Given a significance level <span class="math">\(\alpha\)</span>, one can then declare the significant (rejected) hypotheses. In R this is most commonly done with the p.adjust function.</p>
-<p>Similarly, IHW (Independent Hypothesis Weighting) is also a multiple testing procedure, but beyond the p-values, it also requires a covariate (filter statistic) which is independent of the p-values under the null hypothesis. Therefore the basic input of IHW is the following</p>
+<p>Similarly, IHW (Independent Hypothesis Weighting) is also a multiple testing procedure <span class="citation">(Ignatiadis et al. 2015)</span>, but beyond the p-values, it also requires a covariate (filter statistic) which is independent of the p-values under the null hypothesis. Therefore the basic input of IHW is the following</p>
 <ul>
 <li>A vector of p-values</li>
 <li>A vector of covariates (filter-statistics), independent of the p-values under the null hypothesis</li>
@@ -163,6 +163,7 @@ sum(padj_bh &lt;= 0.1, na.rm=TRUE)</code></pre>
 <div class="references">
 <h1 id="references" class="unnumbered">References</h1>
 <p>Bourgon, Richard, Robert Gentleman, and Wolfgang Huber. 2010. “Independent Filtering Increases Detection Power for High-Throughput Experiments.” <em>Proceedings of the National Academy of Sciences</em> 107 (21). National Acad Sciences: 9546–51.</p>
+<p>Ignatiadis, Nikolaos, Bernd Klaus, Judith Zaugg, and Wolfgang Huber. 2015. “Data-Driven Hypothesis Weighting Increases Detection Power in Big Data Analytics.” <em>BioRxiv</em>. Cold Spring Harbor Labs Journals, 034330.</p>
 <p>Love, Michael I, Wolfgang Huber, and Simon Anders. 2014. “Moderated Estimation of Fold Change and Dispersion for RNA-Seq Data with DESeq2.” <em>Genome Biology</em> 15 (12). BioMed Central Ltd: 550.</p>
 </div>
 </div>

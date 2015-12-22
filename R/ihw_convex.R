@@ -89,7 +89,7 @@ ihw <- function(pvalues, filter_statistics, alpha,
 	if (filter_statistic_type =="ordinal" & is.numeric(filter_statistics)){
 
 		if (nbins == "auto"){
-			nbins <- min(300, floor(length(pvalues)/1500)) # rule of thumb..
+			nbins <- max(1,min(300, floor(length(pvalues)/1500))) # rule of thumb..
 		}
 		groups <- as.factor(groups_by_filter(filter_statistics, nbins))
 		penalty <- "total variation"
@@ -116,8 +116,12 @@ ihw <- function(pvalues, filter_statistics, alpha,
 		# just a few for now until I get warm starts of the LP solvers to work
 		lambdas <- c(0, 1, nbins/8, nbins/4, nbins/2, nbins, Inf)
 	}
+
+	if (nbins < 1) {
+		stop("Cannot have less than one bin.")
+	}
 	# once we have groups, check whether they include enough p-values
-	if (any(table(groups) < 1000)){
+	if (nbins > 1 & any(table(groups) < 1000)){
 		message("In general, data-driven choice of weights requires at least 1000 p-values per stratum.")
 	}
 
@@ -129,9 +133,29 @@ ihw <- function(pvalues, filter_statistics, alpha,
 	sorted_groups <- groups[order_pvalues]
 	sorted_pvalues <- pvalues[order_pvalues]
 
-	if (!is.null(seed)) set.seed(as.integer(seed)) #seed
+	if (!is.null(seed)){
+		#http://stackoverflow.com/questions/14324096/setting-seed-locally-not-globally-in-r?rq=1
+		tmp <- runif(1)
+		old <- .Random.seed
+  		on.exit( { .Random.seed <<- old } )
+  		set.seed(as.integer(seed)) #seed
+	}
 
-	res <- ihw_internal(sorted_groups, sorted_pvalues, alpha, lambdas,
+	if (nbins == 1){
+		nfolds <- 1L
+		nfolds_internal <- 1L
+		nsplits_internal <- 1L
+		message("Only 1 bin; IHW reduces to Benjamini Hochberg (uniform weights)")
+		sorted_adj_p <- p.adjust(sorted_pvalues, method="BH")
+		rjs <- sum(sorted_adj_p <= alpha)
+		res <- list(lambda=0, fold_lambdas=0, rjs=rjs, sorted_pvalues=sorted_pvalues,
+					sorted_weighted_pvalues = sorted_pvalues,
+					sorted_adj_p=sorted_adj_p, sorted_weights=rep(1, length(sorted_pvalues)),
+					sorted_groups=as.factor(rep(1, length(sorted_pvalues))),
+					sorted_folds=as.factor(rep(1, length(sorted_pvalues))),
+					weight_matrix = matrix(1))
+	} else if (nbins > 1) {
+		res <- ihw_internal(sorted_groups, sorted_pvalues, alpha, lambdas,
 						penalty=penalty,
 						quiet=quiet,
 						nfolds=nfolds,
@@ -141,6 +165,7 @@ ihw <- function(pvalues, filter_statistics, alpha,
 						distrib_estimator = distrib_estimator,
 						lp_solver=lp_solver,
 						...)
+	}
 
 	if (return_internal){
 		return(res)
@@ -201,7 +226,12 @@ ihw_internal <- function(sorted_groups, sorted_pvalues, alpha, lambdas,
 
 
 	#  do the k-fold strategy
-	if (!is.null(seed)) set.seed(as.integer(seed)) #seed
+	if (!is.null(seed)){
+		#http://stackoverflow.com/questions/14324096/setting-seed-locally-not-globally-in-r?rq=1
+		old <- .Random.seed
+  		on.exit( { .Random.seed <<- old } )
+  		set.seed(as.integer(seed)) #seed
+	}
 
 	sorted_folds <- sample(1:nfolds, m, replace = TRUE)
 
