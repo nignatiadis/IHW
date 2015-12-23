@@ -1,6 +1,6 @@
 #' An S4 class to represent the ihw output.
 #'
-#' @slot df  A data frame which collects the input data such as the vector of p values and the filter statistics, the group assignment, as well as outputs (weighted p-values, adjusted p-values)
+#' @slot df  A data.frame that collects the input data, including the vector of p values and the covariate, the group assignment, as well as outputs (weighted p-values, adjusted p-values)
 #' @slot weights  A (nbins X nfolds) matrix of the weight assigned to each stratum
 #' @slot alpha   Numeric, the nominal significance level at which the FDR is to be controlled
 #' @slot nbins  Integer, number of distinct levels into which the hypotheses were stratified
@@ -8,17 +8,19 @@
 #' @slot regularization_term Numeric vector, the final value of the regularization parameter within each fold
 #' @slot penalty  Character, "uniform deviation" or "total variation"
 #' @slot filter_statistic_type  Character, "ordinal" or "nominal"
-#' @slot reg_path_information  A data frame, information about the whole regularization path. (Currently empty data frame)
+#' @slot reg_path_information  A data.frame, information about the whole regularization path. (Currently not used, thus empty)
 #' @slot solver_information  A list, solver specific output, e.g. were all subproblems solved to optimality? (Currently empty list)
 #'
 #' @examples
 #'
-#' set.seed(1)
-#' X   <- runif(20000, min=0.5, max=4.5) #covariate
-#' H   <- rbinom(20000,1,0.1)            #hypothesis true or false
-#' Z   <- rnorm(20000, H*X)              #Z-score
-#' pvalue <- 1-pnorm(Z)                  #pvalue
-#' ihw_res <- ihw(pvalue, X, .1)
+#' save.seed <- .Random.seed; set.seed(1)
+#' X   <- runif(n = 20000, min = 0.5, max = 4.5)       # Covariate
+#' H   <- rbinom(n = length(X), size = 1, prob = 0.1)  # Is the null hypothesis (mean=0) true or false ?
+#' Z   <- rnorm(n = length(X), mean = H * X)           # Z-score
+#' .Random.seed <- save.seed
+#' 
+#' pvalue <- 1 - pnorm(Z)                              # pvalue
+#' ihw_res <- ihw(pvalue, filter_statistics = X, alpha = 0.1)
 #' rejections(ihw_res)
 #' colnames(as.data.frame(ihw_res))
 #'
@@ -63,8 +65,8 @@ weights.ihwResult <-function(object, levels_only = FALSE){
 }
 
 #' @param object,x A ihwResult object as returned by a call to ihw(...)
-#' @param levels_only Boolean, if FALSE, return a vector of weights (thresholds) with one weight
-#'    (threshold) for each hypothesis, otherwise return a nfolds x nbins matrix of weights/thresholds
+#' @param levels_only Logical, if FALSE, return a vector of weights (thresholds) with one weight
+#'    (threshold) for each hypothesis, otherwise return a nfolds x nbins matrix of weights (thresholds)
 #' @param ... Parameters passed in to individual methods
 #' @describeIn ihwResult Extract weights
 #' @export
