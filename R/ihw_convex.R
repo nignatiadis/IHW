@@ -6,12 +6,12 @@
 #' power.
 #'
 #' @param pvalues  Numeric vector of unadjusted p-values.
-#' @param filter_statistics  Vector which contains the one-dimensional filter-statistics (covariates, independent under the H0 of the p-value) 
+#' @param covariates  Vector which contains the one-dimensional covariates (independent under the H0 of the p-value)
 #'                for each test. Can be numeric or a factor. (If numeric it will be converted into factor by binning.)
 #' @param alpha   Numeric, sets the nominal level for FDR control.
-#' @param filter_statistic_type  "ordinal" or "nominal" (i.e. whether filter statistics can be sorted in increasing order or not)
-#' @param nbins  Integer, number of groups into which p-values will be split based on filter_statistic. Use "auto" for
-#'             automatic selection of the number of bins. Only applicable when filter_statistics is not a factor.
+#' @param covariate_type  "ordinal" or "nominal" (i.e. whether covariates can be sorted in increasing order or not)
+#' @param nbins  Integer, number of groups into which p-values will be split based on covariate. Use "auto" for
+#'             automatic selection of the number of bins. Only applicable when covariates is not a factor.
 #' @param quiet  Boolean, if False a lot of messages are printed during the fitting stages.
 #' @param nfolds Number of folds into which the p-values will be split for the pre-validation procedure
 #' @param nfolds_internal  Within each fold, a second  (nested) layer of cross-validation can be conducted to choose a good
@@ -34,17 +34,18 @@
 #'
 #' @examples
 #'
-#' set.seed(1)
+#' save.seed <- .Random.seed; set.seed(1)
 #' X   <- runif(20000, min=0.5, max=4.5) #covariate
 #' H   <- rbinom(20000,1,0.1)            #hypothesis true or false
 #' Z   <- rnorm(20000, H*X)              #Z-score
+#' .Random.seed <- save.seed
 #' pvalue <- 1-pnorm(Z)                  #pvalue
 #' ihw_res <- ihw(pvalue, X, .1)
 #'
 #'
 #' @export
-ihw <- function(pvalues, filter_statistics, alpha,
-						filter_statistic_type = "ordinal",
+ihw <- function(pvalues, covariates, alpha,
+						covariate_type = "ordinal",
 						nbins = "auto",
 						quiet =TRUE ,
 						nfolds = 5L,
@@ -78,24 +79,24 @@ ihw <- function(pvalues, filter_statistics, alpha,
 
    	# filter our p-values
     pvalues <- pvalues[nna]
-    filter_statistics <- filter_statistics[nna]
+    covariates <- covariates[nna]
     weights <- rep(NA, length(pvalues))
 
-    if (any(is.na(filter_statistics))){
-    	stop("Filter statistics corresponding to non-NA p-values should never be NA. Aborting.")
+    if (any(is.na(covariates))){
+    	stop("Covariates corresponding to non-NA p-values should never be NA. Aborting.")
     }
 
 
-	if (filter_statistic_type =="ordinal" & is.numeric(filter_statistics)){
+	if (covariate_type =="ordinal" & is.numeric(covariates)){
 
 		if (nbins == "auto"){
 			nbins <- max(1,min(300, floor(length(pvalues)/1500))) # rule of thumb..
 		}
-		groups <- as.factor(groups_by_filter(filter_statistics, nbins))
+		groups <- as.factor(groups_by_filter(covariates, nbins))
 		penalty <- "total variation"
 
-	} else if (is.factor(filter_statistics)){
-		groups <- filter_statistics
+	} else if (is.factor(covariates)){
+		groups <- covariates
 		if (nbins != "auto" & nbins != nlevels(groups)){
 			warning("Overwriting manually specified nbins, since it has to equal the number
 				of levels for categorical covariates")
@@ -103,13 +104,13 @@ ihw <- function(pvalues, filter_statistics, alpha,
 
 		nbins <- nlevels(groups)
 
-		if (filter_statistic_type == "nominal"){
+		if (covariate_type == "nominal"){
 			penalty <- "uniform deviation"
-		} else if (filter_statistic_type == "ordinal") {
+		} else if (covariate_type == "ordinal") {
 			penalty <- "total variation"
 		}
 	} else {
-		stop("filter_statistics are not of the appropriate type")
+		stop("Covariates are not of the appropriate type")
 	}
 
 	if ((length(lambdas)== 1) & (lambdas[1] == "auto")){
@@ -178,7 +179,7 @@ ihw <- function(pvalues, filter_statistics, alpha,
 	adj_pvalues <- fill_nas_reorder(res$sorted_adj_p, nna, reorder_pvalues)
 	groups     <- factor(fill_nas_reorder(res$sorted_groups, nna, reorder_pvalues),levels=group_levels)
 	folds      <- factor(fill_nas_reorder(res$sorted_folds, nna, reorder_pvalues),levels=1:nfolds)
-	filter_statistics <- fill_nas_reorder(filter_statistics, nna, 1:length(filter_statistics))
+	covariates <- fill_nas_reorder(covariates, nna, 1:length(covariates))
 
 
 	df <- data.frame(pvalue = pvalues,
@@ -186,7 +187,7 @@ ihw <- function(pvalues, filter_statistics, alpha,
 				     weight = weights,
 				     weighted_pvalue = weighted_pvalues,
 					 group= groups,
-					 filter_statistic = filter_statistics,
+					 covariate = covariates,
 					 fold=as.factor(folds))
 
 	ihw_obj <- new("ihwResult",
@@ -197,7 +198,7 @@ ihw <- function(pvalues, filter_statistics, alpha,
 					nfolds = nfolds,
 					regularization_term = res$fold_lambdas,
 					penalty = penalty,
-					filter_statistic_type = filter_statistic_type,
+					covariate_type = covariate_type,
 					reg_path_information = data.frame(),
 		 			solver_information = list())
 

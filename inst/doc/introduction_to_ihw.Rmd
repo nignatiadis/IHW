@@ -1,6 +1,6 @@
 ---
 title: "Introduction to IHW"
-author: "N. Ignatiadis"
+author: "Nikos Ignatiadis"
 date: "`r doc_date()`"
 package: "`r pkg_ver('IHW')`"
 output: BiocStyle::html_document
@@ -13,25 +13,25 @@ vignette: >
 
 # Introduction
 
-You will probably be familiar with multiple testing procedures that take a set of p-values and then calculate adjusted p-values. Given a significance level $\alpha$, one can then declare the significant (rejected) hypotheses. In R this is most commonly done with the p.adjust function.
+You will probably be familiar with multiple testing procedures that take a set of p-values and then calculate adjusted p-values. Given a significance level $\alpha$, one can then declare the rejected hypotheses. In R this is most commonly done with the `p.adjust` function in the `stats` package.
 
-Similarly, IHW (Independent Hypothesis Weighting) is also a multiple testing procedure [@ignatiadis2015data], but beyond the p-values, it also requires a covariate (filter statistic) which is independent of the p-values under the null hypothesis. Therefore the basic input of IHW is the following
+Similarly, IHW (Independent Hypothesis Weighting) is also a multiple testing procedure [@ignatiadis2015data], but beyond the p-values, it also requires a covariate for each test. The covariate should be informative of the power or prior probability of each individual test, but is chosen such that the p-values for those hypotheses that are truly null do not depend on the covariate. Therefore the input of IHW is the following:
 
-* A vector of p-values
-* A vector of covariates (filter-statistics), independent of the p-values under the null hypothesis
-* A significance level $\alpha \in (0,1)$ at which the False Discovery Rate should be controlled.
+* a vector of p-values,
+* a matching vector of covariates, 
+* the significance level $\alpha \in (0,1)$ at which the False Discovery Rate should be controlled.
 
-IHW then calculates weights for each p-value and also a vector of rejected hypothesis at the specified significance level. Roughly speaking, the weights allow different prioritization of the individual hypotheses, based on their covariate.
+IHW then calculates weights for each p-value and also a vector of adjusted p-values. The weights allow different prioritization of the individual hypotheses, based on their covariate. A hypothesis with weight > 1 gets prioritized in the testing procedure and the higher the weight the higher the prioritization. On the other hand, a hypothesis with weight equal to 0 cannot be rejected and essentially is filtered out of the procedure.
 
-To be more precise, assume we have $m$ different hypothesis tests: Then the multiple testing weights are non-negative random variables $w_i \geq 0$ such that $\sum_{i=1}^m w_i = m$. We then define the weighted p-values as $P^\text{weighted}_i = \frac{P_i}{w_i}$ and then plug these weighted p-values (instead of the p-values) into the Benjamini Hochberg procedure. This means that if $w_i > 1$, then it is easier to reject hypothesis $i$.
+To be more precise, assume we have $m$ different hypothesis tests. Then the hypothesis weights are non-negative numbers $w_i \geq 0$ such that $\sum_{i=1}^m w_i = m$. We then define the weighted p-values as $P^\text{weighted}_i = \frac{P_i}{w_i}$ and then plug these weighted p-values (instead of the p-values) into the procedure of Benjamini and Hochberg. 
 
-If this covariate also happens to be informative about the power of the individual tests, then we can actually gain a lot of power compared to an unweighted method (an unweighted method is a weighted method where all tests are assigned weight 1).
+Thus, the covariates allows us to learn weights in a data-driven way and therefore we can gain a lot of power compared to an unweighted method (an unweighted method is a weighted method where all tests are assigned weight 1).
 
-In this vignette, we will show how to use the package in differential gene expression RNA-Seq analysis and then also mention some other examples where our method is applicable.
+In this vignette, we will show how to use the IHW package in differential gene expression RNA-Seq analysis and then also mention some other examples where our method is applicable.
 
 # IHW and DESeq2
 
-Here we analyze the airway RNA-Seq dataset using DESeq2 [@love2014moderated].
+We analyze the airway RNA-Seq dataset using DESeq2 [@love2014moderated].
 
 ```{r, message=FALSE, warning=FALSE}
 library("airway")
@@ -42,7 +42,7 @@ dds <- DESeq(dds)
 res <- results(dds)
 ```
 
-The output is a standard DESeqResults object, which includes the following columns for each gene:
+The output is a `DESeqResults` object, which includes the following columns for each gene:
 
 ```{r}
 colnames(res)
@@ -53,15 +53,10 @@ In particular, we have p-values and the baseMean of (normalized) counts for each
 First load IHW
 ```{r, message=FALSE, warning=FALSE}
 library("IHW")
+ihw_res <- ihw(res$pvalue, res$baseMean, alpha = 0.1)
 ```
 
-Then apply it:
-
-```{r}
-ihw_res <- ihw(res$pvalue, res$baseMean, .1)
-```
-
-This returns an object of the class ihwResult. We can get e.g. the total number of rejections at our pre-specified significance level alpha:
+This returns an object of the class `ihwResult`. We can get e.g. the total number of rejections.
 
 ```{r}
 rejections(ihw_res)
@@ -70,27 +65,26 @@ rejections(ihw_res)
 And we can also extract the adjusted p-values:
 ```{r}
 head(adj_pvalues(ihw_res))
-sum(adj_pvalues(ihw_res) <= 0.1, na.rm=TRUE) == rejections(ihw_res)
+sum(adj_pvalues(ihw_res) <= 0.1, na.rm = TRUE) == rejections(ihw_res)
 ```
 
-We can compare this to the result of applying Benjamini Hochberg on the p-values:
+We can compare this to the result of applying the method of Benjamini and Hochberg to the p-values only:
 
 ```{r}
-padj_bh <- p.adjust(res$pvalue, method="BH")
-sum(padj_bh <= 0.1, na.rm=TRUE)
+padj_bh <- p.adjust(res$pvalue, method = "BH")
+sum(padj_bh <= 0.1, na.rm = TRUE)
 ```
 
-We thus get a lot more rejections! How did we get this power? Essentially it was possible by assigning appropriate weights to each hypothesis! We can retrieve the weights as follows:
+We thus get a lot more rejections! How did we get this power? Essentially it was possible by assigning appropriate weights to each hypothesis. We can retrieve the weights as follows:
 
 ```{r}
 head(weights(ihw_res))
 ```
 
-Basically, a hypothesis with weight > 1 gets prioritized in the testing procedure and the higher the weight the higher the prioritization. On the other hand, a hypothesis with weight equal to 0 cannot be rejected and essentially is filtered out of the procedure.
 
-Internally, what happened was the following: We split the hypotheses into $n$ different strata based on increasing value of baseMean and we also randomly split them into $k$ folds (here $k=5$). Then, for each combination of folds + stratum, we learned the weights. The discretization into strata facilitates the estimation of the distribution function conditionally on the covariate and the internal optimization which estimates the weights. The division into random folds helps us to avoid "overfitting" the data, something which would result in a loss of control of the False Discovery Rate.
+Internally, what happened was the following: We split the hypotheses into $n$ different strata based on increasing value of baseMean and we also randomly split them into $k$ folds (here $k=5$). Then, for each combination of fold and stratum, we learned the weights. The discretization into strata facilitates the estimation of the distribution function conditionally on the covariate and the optimization of the weights. The division into random folds helps us to avoid "overfitting" the data, something which can result in loss of control of the False Discovery Rate.
 
-In particular, each hypothesis test gets assigned a weight depending on the combination of its assigned fold and its stratum.
+In particular, each hypothesis test gets assigned a weight depending on the combination of its assigned fold and stratum.
 
 We can also see this internal representation of the weights as a ($n$ X $k$) matrix:
 
@@ -98,7 +92,7 @@ We can also see this internal representation of the weights as a ($n$ X $k$) mat
 weights(ihw_res, levels_only=TRUE)
 ```
 
-Finally, IHW contains a convenience function for visualization of the estimated weights:
+Finally, IHW contains a convenience function to visualize the estimated weights:
 
 ```{r}
 plot_ihw(ihw_res)
@@ -106,7 +100,7 @@ plot_ihw(ihw_res)
 
 Here we see that the general trend is driven by the covariate (stratum) and not as much by the fold. Also as expected, genes with very low baseMean count get assigned a weight of 0, while genes with high baseMean count get prioritized.
 
-As a further convenience for further work, a ihwResult object can be converted to a data frame as follows:
+As a further convenience for further work, a ihwResult object can be converted to a data.frame as follows:
 
 ```{r}
 colnames(as.data.frame(ihw_res))
@@ -116,10 +110,10 @@ colnames(as.data.frame(ihw_res))
 
 In which cases is IHW applicable? Whenever we have a covariate which is both informative of power and independent of the p-values under the null hypothesis.
 
-Below we summarize some examples, where such a covariate is available:
+Below we summarize some examples where such a covariate is available:
 
- *  For row-wise $t$-tests  we can use the overall (row-wise) variance [@bourgon2010independent]. 
- *  For Rank tests  we can use any function that does not depend on the order of arguments [@bourgon2010independent].
+ *  For row-wise $t$-tests we can use the overall (row-wise) variance [@bourgon2010independent]. 
+ *  For row-wise rank-based tests (e.g. Wilcoxon) we can use any function that does not depend on the order of arguments [@bourgon2010independent].
  *  In DESeq2, we can use baseMean, as illustrated above [@love2014moderated].
  *  In  eQTL analysis we can use the SNP-gene distance, the DNAse sensitivity, the HiC score, etc. 
 

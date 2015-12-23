@@ -8,8 +8,8 @@
 \alias{alpha,ihwResult-method}
 \alias{as.data.frame,ihwResult-method}
 \alias{as.data.frame.ihwResult}
-\alias{filter_statistics}
-\alias{filter_statistics,ihwResult-method}
+\alias{covariates}
+\alias{covariates,ihwResult-method}
 \alias{groups_factor}
 \alias{groups_factor,ihwResult-method}
 \alias{ihwResult}
@@ -46,9 +46,9 @@ weighted_pvalues(object)
 
 \S4method{weighted_pvalues}{ihwResult}(object)
 
-filter_statistics(object)
+covariates(object)
 
-\S4method{filter_statistics}{ihwResult}(object)
+\S4method{covariates}{ihwResult}(object)
 
 groups_factor(object)
 
@@ -66,7 +66,8 @@ rejected_hypotheses(object, ...)
 
 \S4method{rejected_hypotheses}{ihwResult}(object)
 
-as.data.frame.ihwResult(x, row.names = NULL, optional = FALSE, ...)
+\method{as.data.frame}{ihwResult}(x, row.names = NULL, optional = FALSE,
+  ...)
 
 \S4method{as.data.frame}{ihwResult}(x, row.names = NULL, optional = FALSE,
   ...)
@@ -76,8 +77,8 @@ as.data.frame.ihwResult(x, row.names = NULL, optional = FALSE, ...)
 \arguments{
 \item{object, x}{A ihwResult object as returned by a call to ihw(...)}
 
-\item{levels_only}{Boolean, if FALSE, return a vector of weights (thresholds) with one weight
-(threshold) for each hypothesis, otherwise return a nfolds x nbins matrix of weights/thresholds}
+\item{levels_only}{Logical, if FALSE, return a vector of weights (thresholds) with one weight
+(threshold) for each hypothesis, otherwise return a nfolds x nbins matrix of weights (thresholds)}
 
 \item{...}{Parameters passed in to individual methods}
 }
@@ -96,7 +97,7 @@ An S4 class to represent the ihw output.
 
 \item \code{weighted_pvalues}: Extract weighted pvalues
 
-\item \code{filter_statistics}: Extract filter statistics
+\item \code{covariates}: Extract filter statistics
 
 \item \code{groups_factor}: Extract factor of stratification (grouping) variable
 
@@ -113,7 +114,7 @@ An S4 class to represent the ihw output.
 \section{Slots}{
 
 \describe{
-\item{\code{df}}{A data frame which collects the input data such as the vector of p values and the filter statistics, the group assignment, as well as outputs (weighted p-values, adjusted p-values)}
+\item{\code{df}}{A data.frame that collects the input data, including the vector of p values and the covariate, the group assignment, as well as outputs (weighted p-values, adjusted p-values)}
 
 \item{\code{weights}}{A (nbins X nfolds) matrix of the weight assigned to each stratum}
 
@@ -127,20 +128,22 @@ An S4 class to represent the ihw output.
 
 \item{\code{penalty}}{Character, "uniform deviation" or "total variation"}
 
-\item{\code{filter_statistic_type}}{Character, "ordinal" or "nominal"}
+\item{\code{covariate_type}}{Character, "ordinal" or "nominal"}
 
-\item{\code{reg_path_information}}{A data frame, information about the whole regularization path. (Currently empty data frame)}
+\item{\code{reg_path_information}}{A data.frame, information about the whole regularization path. (Currently not used, thus empty)}
 
 \item{\code{solver_information}}{A list, solver specific output, e.g. were all subproblems solved to optimality? (Currently empty list)}
 }}
 \examples{
 
-set.seed(1)
-X   <- runif(20000, min=0.5, max=4.5) #covariate
-H   <- rbinom(20000,1,0.1)            #hypothesis true or false
-Z   <- rnorm(20000, H*X)              #Z-score
-pvalue <- 1-pnorm(Z)                  #pvalue
-ihw_res <- ihw(pvalue, X, .1)
+save.seed <- .Random.seed; set.seed(1)
+X   <- runif(n = 20000, min = 0.5, max = 4.5)       # Covariate
+H   <- rbinom(n = length(X), size = 1, prob = 0.1)  # Is the null hypothesis (mean=0) true or false ?
+Z   <- rnorm(n = length(X), mean = H * X)           # Z-score
+.Random.seed <- save.seed
+
+pvalue <- 1 - pnorm(Z)                              # pvalue
+ihw_res <- ihw(pvalue, covariates, alpha = 0.1)
 rejections(ihw_res)
 colnames(as.data.frame(ihw_res))
 

@@ -7,7 +7,7 @@
 #' @slot nfolds  Integer, number of folds for pre-validation procedure
 #' @slot regularization_term Numeric vector, the final value of the regularization parameter within each fold
 #' @slot penalty  Character, "uniform deviation" or "total variation"
-#' @slot filter_statistic_type  Character, "ordinal" or "nominal"
+#' @slot covariate_type  Character, "ordinal" or "nominal"
 #' @slot reg_path_information  A data.frame, information about the whole regularization path. (Currently not used, thus empty)
 #' @slot solver_information  A list, solver specific output, e.g. were all subproblems solved to optimality? (Currently empty list)
 #'
@@ -18,9 +18,9 @@
 #' H   <- rbinom(n = length(X), size = 1, prob = 0.1)  # Is the null hypothesis (mean=0) true or false ?
 #' Z   <- rnorm(n = length(X), mean = H * X)           # Z-score
 #' .Random.seed <- save.seed
-#' 
+#'
 #' pvalue <- 1 - pnorm(Z)                              # pvalue
-#' ihw_res <- ihw(pvalue, filter_statistics = X, alpha = 0.1)
+#' ihw_res <- ihw(pvalue, covariates, alpha = 0.1)
 #' rejections(ihw_res)
 #' colnames(as.data.frame(ihw_res))
 #'
@@ -36,7 +36,7 @@ ihwResult <- setClass("ihwResult",
                    nfolds = "integer",
                    regularization_term = "numeric",
                    penalty = "character",
-                   filter_statistic_type = "character",
+                   covariate_type = "character",
                    reg_path_information = "data.frame",
            		     solver_information= "list"))
 
@@ -122,19 +122,19 @@ setMethod("weighted_pvalues", signature(object="ihwResult"),
           weighted_pvalues.ihwResult)
 
 
-#---------------------------  filter statistic extraction ----------------------------------------------------------#
+#---------------------------  covariate extraction ----------------------------------------------------------#
 
-filter_statistics.ihwResult <- function(object){
-  object@df$filter_statistic
+covariates.ihwResult <- function(object){
+  object@df$covariate
 }
 
 #' @rdname ihwResult-class
-setGeneric("filter_statistics", function(object) standardGeneric("filter_statistics"))
+setGeneric("covariates", function(object) standardGeneric("covariates"))
 
-#' @describeIn ihwResult Extract filter statistics
+#' @describeIn ihwResult Extract covariates
 #' @export
-setMethod("filter_statistics", signature(object="ihwResult"),
-          filter_statistics.ihwResult)
+setMethod("covariates", signature(object="ihwResult"),
+          covariates.ihwResult)
 
 
 #----------------- extract stratification variable----------------------------------------------------------------#
@@ -216,7 +216,7 @@ setMethod("as.data.frame", "ihwResult",as.data.frame.ihwResult)
 setMethod("show", signature(object="ihwResult"), function(object) {
   cat("ihwResult object with", nrow(object@df),"hypothesis tests \n")
   cat("Nominal FDR control level:", alpha(object),"\n")
-  cat("Split into", object@nbins,"bins, based on an", object@filter_statistic_type, "covariate\n")
+  cat("Split into", object@nbins,"bins, based on an", object@covariate_type, "covariate\n")
 })
 
 
@@ -240,7 +240,7 @@ setMethod("plugin_fdr", signature(object="ihwResult"),
 stratification_breaks.ihwResult <- function(object) {
   ts <- thresholds(object)
   groups <- groups_factor(object)
-  filterstat_list <- split(filter_statistics(object), groups)
+  filterstat_list <- split(covariates(object), groups)
   filterstats <- sapply(filterstat_list, max)
   filterstats
 }

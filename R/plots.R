@@ -15,17 +15,18 @@ setGeneric("plot_ihw", function(x, ...) standardGeneric("plot_ihw"))
 #'
 #' @examples
 #'
-#'    set.seed(1)
+#'    save.seed <- .Random.seed; set.seed(1)
 #'    X   <- runif(20000, min=0.5, max=4.5) #covariate
 #'    H   <- rbinom(20000,1,0.1)            #hypothesis true or false
 #'    Z   <- rnorm(20000, H*X)              #Z-score
+#'    .Random.seed <- save.seed
 #'    pvalue <- 1-pnorm(Z)                  #pvalue
 #'    ihw_res <- ihw(pvalue, X, .1)
 #'    plot_ihw(ihw_res)
 #'
 #' @export
 setMethod("plot_ihw", signature="ihwResult",
-	function(x, x_axis="group", scale=x@filter_statistic_type){
+	function(x, x_axis="group", scale=x@covariate_type){
 		if (requireNamespace("ggplot2", quietly=TRUE) & (requireNamespace("scales", quietly=TRUE))){
 			ws <- weights(x, levels_only=TRUE)
 			group_levels <- levels(groups_factor(x))

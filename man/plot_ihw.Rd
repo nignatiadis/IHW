@@ -9,7 +9,7 @@
 plot_ihw(x, ...)
 
 \S4method{plot_ihw}{ihwResult}(x, x_axis = "group",
-  scale = x@filter_statistic_type)
+  scale = x@covariate_type)
 }
 \arguments{
 \item{x}{ihwResult Object}
@@ -32,10 +32,11 @@ Convenience function to plot weights learned by ihw method
 }}
 \examples{
 
-   set.seed(1)
+   save.seed <- .Random.seed; set.seed(1)
    X   <- runif(20000, min=0.5, max=4.5) #covariate
    H   <- rbinom(20000,1,0.1)            #hypothesis true or false
    Z   <- rnorm(20000, H*X)              #Z-score
+   .Random.seed <- save.seed
    pvalue <- 1-pnorm(Z)                  #pvalue
    ihw_res <- ihw(pvalue, X, .1)
    plot_ihw(ihw_res)

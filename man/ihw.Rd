@@ -4,8 +4,8 @@
 \alias{ihw}
 \title{ihw: Main function for Independent Hypothesis Weighting}
 \usage{
-ihw(pvalues, filter_statistics, alpha, filter_statistic_type = "ordinal",
-  nbins = "auto", quiet = TRUE, nfolds = 5L, nfolds_internal = 5L,
+ihw(pvalues, covariates, alpha, covariate_type = "ordinal", nbins = "auto",
+  quiet = TRUE, nfolds = 5L, nfolds_internal = 5L,
   nsplits_internal = 1L, lambdas = "auto", seed = 1L,
   distrib_estimator = "grenander", lp_solver = "lpsymphony",
   return_internal = FALSE, ...)
@@ -13,15 +13,15 @@ ihw(pvalues, filter_statistics, alpha, filter_statistic_type = "ordinal",
 \arguments{
 \item{pvalues}{Numeric vector of unadjusted p-values.}
 
-\item{filter_statistics}{Vector which contains the one-dimensional filter-statistics (covariates, independent under the H0 of the p-value) 
+\item{covariates}{Vector which contains the one-dimensional covariates (independent under the H0 of the p-value)
 for each test. Can be numeric or a factor. (If numeric it will be converted into factor by binning.)}
 
 \item{alpha}{Numeric, sets the nominal level for FDR control.}
 
-\item{filter_statistic_type}{"ordinal" or "nominal" (i.e. whether filter statistics can be sorted in increasing order or not)}
+\item{covariate_type}{"ordinal" or "nominal" (i.e. whether covariates can be sorted in increasing order or not)}
 
-\item{nbins}{Integer, number of groups into which p-values will be split based on filter_statistic. Use "auto" for
-automatic selection of the number of bins. Only applicable when filter_statistics is not a factor.}
+\item{nbins}{Integer, number of groups into which p-values will be split based on covariate. Use "auto" for
+automatic selection of the number of bins. Only applicable when covariates is not a factor.}
 
 \item{quiet}{Boolean, if False a lot of messages are printed during the fitting stages.}
 
@@ -60,10 +60,11 @@ power.
 }
 \examples{
 
-set.seed(1)
+save.seed <- .Random.seed; set.seed(1)
 X   <- runif(20000, min=0.5, max=4.5) #covariate
 H   <- rbinom(20000,1,0.1)            #hypothesis true or false
 Z   <- rnorm(20000, H*X)              #Z-score
+.Random.seed <- save.seed
 pvalue <- 1-pnorm(Z)                  #pvalue
 ihw_res <- ihw(pvalue, X, .1)
 

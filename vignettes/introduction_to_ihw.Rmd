@@ -21,13 +21,13 @@ Similarly, IHW (Independent Hypothesis Weighting) is also a multiple testing pro
 * a matching vector of covariates, 
 * the significance level $\alpha \in (0,1)$ at which the False Discovery Rate should be controlled.
 
-IHW then calculates weights for each p-value and also a vector of rejected hypotheses *FIXME what is that?* at the specified significance level. Roughly speaking *FIXME Let's either be precise, or say nothing at all, rather than being diffuse*, the weights allow different prioritization of the individual hypotheses, based on their covariate.
+IHW then calculates weights for each p-value and also a vector of adjusted p-values. The weights allow different prioritization of the individual hypotheses, based on their covariate. A hypothesis with weight > 1 gets prioritized in the testing procedure and the higher the weight the higher the prioritization. On the other hand, a hypothesis with weight equal to 0 cannot be rejected and essentially is filtered out of the procedure.
 
-To be more precise, assume we have $m$ different hypothesis tests. Then the hypothesis weights are non-negative random variables (i.e., numbers that in some way will depend on the data *FIXME is it important to talk about 'random variables' here? The audience are general users, not probabilists*) $w_i \geq 0$ such that $\sum_{i=1}^m w_i = m$. We then define the weighted p-values as $P^\text{weighted}_i = \frac{P_i}{w_i}$ and then plug these weighted p-values (instead of the p-values) into the procedure of Benjamini and Hochberg. This means that hypotheses with a higher weight will be more easily rejected than those with lower weight, given the same p-value.
+To be more precise, assume we have $m$ different hypothesis tests. Then the hypothesis weights are non-negative numbers $w_i \geq 0$ such that $\sum_{i=1}^m w_i = m$. We then define the weighted p-values as $P^\text{weighted}_i = \frac{P_i}{w_i}$ and then plug these weighted p-values (instead of the p-values) into the procedure of Benjamini and Hochberg. 
 
-If this covariate also happens *FIXME true from a formal point of view but will be confusing to pragmatic/results oriented users; but you could of course mention that method performance is quite robust against mis-weighting, so in the worst case usually is unchanged, while for good choice of weights, pwer increases* to be informative about the power of the individual tests, then we can actually gain a lot of power compared to an unweighted method (an unweighted method is a weighted method where all tests are assigned weight 1).
+Thus, the covariates allows us to learn weights in a data-driven way and therefore we can gain a lot of power compared to an unweighted method (an unweighted method is a weighted method where all tests are assigned weight 1).
 
-In this vignette, we will show how to use the package in differential gene expression RNA-Seq analysis and then also mention some other examples where our method is applicable.
+In this vignette, we will show how to use the IHW package in differential gene expression RNA-Seq analysis and then also mention some other examples where our method is applicable.
 
 # IHW and DESeq2
 
@@ -81,7 +81,6 @@ We thus get a lot more rejections! How did we get this power? Essentially it was
 head(weights(ihw_res))
 ```
 
-Basically, a hypothesis with weight > 1 gets prioritized in the testing procedure and the higher the weight the higher the prioritization. On the other hand, a hypothesis with weight equal to 0 cannot be rejected and essentially is filtered out of the procedure. *FIXME redundant with Intro text.. remove there or here?*
 
 Internally, what happened was the following: We split the hypotheses into $n$ different strata based on increasing value of baseMean and we also randomly split them into $k$ folds (here $k=5$). Then, for each combination of fold and stratum, we learned the weights. The discretization into strata facilitates the estimation of the distribution function conditionally on the covariate and the optimization of the weights. The division into random folds helps us to avoid "overfitting" the data, something which can result in loss of control of the False Discovery Rate.
 

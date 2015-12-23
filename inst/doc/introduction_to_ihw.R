@@ -11,20 +11,18 @@ colnames(res)
 
 ## ---- message=FALSE, warning=FALSE---------------------------------------
 library("IHW")
-
-## ------------------------------------------------------------------------
-ihw_res <- ihw(res$pvalue, res$baseMean, .1)
+ihw_res <- ihw(res$pvalue, res$baseMean, alpha = 0.1)
 
 ## ------------------------------------------------------------------------
 rejections(ihw_res)
 
 ## ------------------------------------------------------------------------
 head(adj_pvalues(ihw_res))
-sum(adj_pvalues(ihw_res) <= 0.1, na.rm=TRUE) == rejections(ihw_res)
+sum(adj_pvalues(ihw_res) <= 0.1, na.rm = TRUE) == rejections(ihw_res)
 
 ## ------------------------------------------------------------------------
-padj_bh <- p.adjust(res$pvalue, method="BH")
-sum(padj_bh <= 0.1, na.rm=TRUE)
+padj_bh <- p.adjust(res$pvalue, method = "BH")
+sum(padj_bh <= 0.1, na.rm = TRUE)
 
 ## ------------------------------------------------------------------------
 head(weights(ihw_res))

@@ -30,7 +30,7 @@ expect_equal(capture.output(ihw_res1), capture.output(ihw_res2))
 plot_ihw(ihw_res2)
 
 
-ihw_res3 <- ihw(sim$pvalue, sim$group, .1, filter_statistic_type="nominal")
+ihw_res3 <- ihw(sim$pvalue, sim$group, .1, covariate_type="nominal")
 
 expect_true(all(apply(weights(ihw_res3, levels_only=T),2, IHW:::uniform_deviation) <= ihw_res3@regularization_term + 10^(-12)))
 
