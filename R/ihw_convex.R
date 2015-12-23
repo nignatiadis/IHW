@@ -391,7 +391,7 @@ ihw_convex <- function(split_sorted_pvalues, alpha, m_groups,
 		} else if (penalty == "uniform deviation"){
 			# -f + m t_g - sum_g m_i t_i <= 0
 
-			absolute_val_constr_matrix_1 <- matrix(rep(-m_groups,nbins), nbins,nbins, byrow=T)
+			absolute_val_constr_matrix_1 <- matrix(rep(-m_groups,nbins), nbins,nbins, byrow=TRUE)
 			diag(absolute_val_constr_matrix_1) <- -m_groups + m
 			absolute_val_constr_matrix_1 <- cbind( slam::simple_triplet_zero_matrix(nbins, nbins,mode="double"),
 												   absolute_val_constr_matrix_1,
@@ -399,7 +399,7 @@ ihw_convex <- function(split_sorted_pvalues, alpha, m_groups,
 
 			# -f - m t_g +  sum_g m_i t_i  <= 0
 
-			absolute_val_constr_matrix_2 <- matrix(rep(+m_groups,nbins), nbins,nbins, byrow=T)
+			absolute_val_constr_matrix_2 <- matrix(rep(+m_groups,nbins), nbins,nbins, byrow=TRUE)
 			diag(absolute_val_constr_matrix_2) <- m_groups - m
 			absolute_val_constr_matrix_2 <- cbind( slam::simple_triplet_zero_matrix(nbins, nbins,mode="double"),
 												   absolute_val_constr_matrix_2,
@@ -570,7 +570,7 @@ ihw_milp <- function(split_sorted_pvalues, alpha, m_groups, lambda=Inf, lp_solve
 	prev_blocks <- 0:(nbins-1)
 	starts <- cumsum(c(1,p_lengths[-nbins]-1))
 
-	full_triplet <- do.call(rbind, mapply(single_block_triple_representation, starts,p_lengths, prev_blocks, SIMPLIFY=F))
+	full_triplet <- do.call(rbind, mapply(single_block_triple_representation, starts,p_lengths, prev_blocks, SIMPLIFY=FALSE))
 	full_triplet <- slam::simple_triplet_matrix(full_triplet[,1],full_triplet[,2], full_triplet[,3])
 
 
@@ -623,7 +623,7 @@ ihw_milp <- function(split_sorted_pvalues, alpha, m_groups, lambda=Inf, lp_solve
 
 
  		# now put above blocks together
- 		ineq_matrix <-  rbind( cbind(do.call(cbind, mapply(left_ineq_matrix_block, 1:nbins, p_lengths, pdiff_list, SIMPLIFY=F)),
+ 		ineq_matrix <-  rbind( cbind(do.call(cbind, mapply(left_ineq_matrix_block, 1:nbins, p_lengths, pdiff_list, SIMPLIFY=FALSE)),
  							  	diag(1, nbins)))
 
  		# for these T_g's we also require the plug-in FDR estimate to be controlled
