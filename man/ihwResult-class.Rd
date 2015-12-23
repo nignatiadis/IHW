@@ -143,7 +143,7 @@ Z   <- rnorm(n = length(X), mean = H * X)           # Z-score
 .Random.seed <- save.seed
 
 pvalue <- 1 - pnorm(Z)                              # pvalue
-ihw_res <- ihw(pvalue, covariates, alpha = 0.1)
+ihw_res <- ihw(pvalue, covariates = X, alpha = 0.1)
 rejections(ihw_res)
 colnames(as.data.frame(ihw_res))
 
