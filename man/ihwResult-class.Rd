@@ -97,7 +97,7 @@ An S4 class to represent the ihw output.
 
 \item \code{weighted_pvalues}: Extract weighted pvalues
 
-\item \code{covariates}: Extract filter statistics
+\item \code{covariates}: Extract covariates
 
 \item \code{groups_factor}: Extract factor of stratification (grouping) variable
 

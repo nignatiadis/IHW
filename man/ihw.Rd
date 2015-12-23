@@ -53,10 +53,9 @@ can be solved with either of these solvers.}
 A ihwResult object.
 }
 \description{
-Given a vector of p-values, a vector of filter-statistics which are independent of the p-values under the null hypothesis and
+Given a vector of p-values, a vector of covariates which are independent of the p-values under the null hypothesis and
 a nominal significance level alpha, IHW learns multiple testing weights and then applies the weighted Benjamini Hochberg 
-procedure. When the filter-statistic is informative of the power of the individual tests, this procedure increases
-power.
+procedure.
 }
 \examples{
 
