@@ -1,21 +1,30 @@
-# Sample .travis.yml for R projects
-
-language: r
-warnings_are_errors: false
+language: c
 sudo: required
 
-bioc_required: true
-bioc_packages:
-  - BiocCheck
-r_github_packages:
-  - vladchimescu/lpsymphony/lpsymphony
-  - jimhester/covr
+before_install:
+  - curl -OL https://raw.githubusercontent.com/metacran/r-builder/master/pkg-build.sh
+  - chmod 755 pkg-build.sh
+  - ./pkg-build.sh bootstrap
 
+install:
+  - ./pkg-build.sh install_github jimhester/covr
+  - ./pkg-build.sh install_bioc BiocCheck
+  - ./pkg-build.sh install_bioc_deps
+
+script:
+  - ./pkg-build.sh run_tests
 
 after_script:
-  - Rscript -e 'covr::codecov()'
+  - ./pkg-build.sh run_script -e 'covr::codecov()'
   - ls -lah
   - FILE=$(ls -1t *.tar.gz | head -n 1)
-  - Rscript -e "library(BiocCheck); BiocCheck(\"${FILE}\")"
+  - ./pkg-build.sh run_script -e "library(BiocCheck); BiocCheck(\"${FILE}\")"
 
 
+notifications:
+  email:
+    on_success: change
+    on_failure: always
+
+env:
+  - RVERSION=devel

@@ -1,6 +1,6 @@
 Package: IHW
 Title: Independent Hypothesis Weighting
-Version: 0.99.3
+Version: 0.99.4
 Authors@R: person("Nikos", "Ignatiadis", email = "nikos.ignatiadis01@gmail.com",
                   role = c("aut", "cre"))
 Description: Independent hypothesis weighting (IHW) is a multiple testing
@@ -11,7 +11,7 @@ Description: Independent hypothesis weighting (IHW) is a multiple testing
     properties of each hypothesis test, while it is independent of the p-value under
     the null hypothesis.
 Depends:
-    R (>= 3.2.0)
+    R (>= 3.3.0)
 License: Artistic-2.0
 LazyData: true
 Imports:
@@ -32,5 +32,7 @@ Suggests:
     rmarkdown
 Enhances: gurobi
 VignetteBuilder: knitr
-biocViews: MultipleComparison
+biocViews:
+    MultipleComparison,
+    RNASeq
 RoxygenNote: 5.0.1
