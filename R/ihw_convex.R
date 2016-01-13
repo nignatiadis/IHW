@@ -65,7 +65,7 @@ ihw <- function(pvalues, covariates, alpha,
 	nfolds_internal <- as.integer(nfolds_internal)
 
 	if (nfolds==1){
-		warning("Using only 1 fold! Only use this if you want to learn the weights, but NEVER for testing!")
+		message("Using only 1 fold! Only use this if you want to learn the weights, but NEVER for testing!")
 	}
 
 

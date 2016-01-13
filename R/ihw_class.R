@@ -245,7 +245,6 @@ setMethod("rejected_hypotheses", signature(object="ihwResult"),
 #--------------- convenience methods ------------------------------------------------------------------------------#
 
 #' @rdname ihwResult-class
-#' @export
 as.data.frame_ihwResult <-function(x,row.names=NULL, optional=FALSE, ...){
         as.data.frame(x@df, row.names=row.names, optional=optional)
       }

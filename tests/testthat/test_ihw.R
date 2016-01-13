@@ -18,14 +18,14 @@ expect_true(all(apply(weights(ihw_res1, levels_only=T),2, IHW:::total_variation)
 ihw_res1_lower_alpha <- ihw(sim$pvalue, sim$filterstat, .01, nbins=10)
 testthat::expect_less_than( rejections(ihw_res1_lower_alpha), rejections(ihw_res1))
 
+# try with only 1 fold
+expect_message(ihw_res1_single_fold <- ihw(sim$pvalue, sim$filterstat, .1, nbins=10, nfolds=1))
 
 sim$group <- as.factor(IHW:::groups_by_filter(sim$filterstat, 10))
 ihw_res2 <- ihw(sim$pvalue, sim$group, .1)
 
 expect_equal(rejections(ihw_res1), rejections(ihw_res2))
 
-# quick test for show method
-expect_equal(capture.output(ihw_res1), capture.output(ihw_res2))
 
 plot_ihw(ihw_res2)
 
@@ -42,7 +42,64 @@ plot_ihw(ihw_res_small, scale="nominal")
 ihw_res_small2 <- ihw(sim$pvalue, sim$filterstat, .05, nbins=2)
 
 
-# now test ihwResult class getters
+# now test ihwResult class getters or methods
+
+# nbins
 expect_equal(nbins(ihw_res1), 10L)
+expect_equal(nbins(ihw_res1), nbins(ihw_res1_single_fold))
+
+# nfolds
 expect_equal(nfolds(ihw_res1), 5L) # the default choice
+expect_equal(nfolds(ihw_res1_single_fold), 1L) # the default choice
+
+n <- nrow(ihw_res1)
+expect_equal(n, 10000)
+expect_equal(nrow(ihw_res1_single_fold), n)
+
+# methods which return vector equal to number of hypotheses
+
+mymethods <- c(adj_pvalues, weights, thresholds, pvalues, weighted_pvalues, covariates,
+        groups_factor ,rejected_hypotheses)
+
+lengths <- sapply(mymethods, function(f) length(f(ihw_res1)))
+expect_true(all(lengths == n))
+
+# check if weight budget fullfilled
+expect_equal( sum(weights(ihw_res1)) , nrow(ihw_res1))
+expect_equal( sum(weights(ihw_res1_single_fold)) , nrow(ihw_res1_single_fold))
+
+# check if levels_only works
+ws_sorted1 <- sort(unique(as.numeric(weights(ihw_res1, levels_only=TRUE))))
+ws_sorted2 <- sort(unique(weights(ihw_res1, levels_only=FALSE)))
+expect_equal(ws_sorted1, ws_sorted2)
+
+expect_equal(dim(weights(ihw_res1, levels_only=TRUE)), c(nbins(ihw_res1), nfolds(ihw_res1)))
+expect_equal(dim(weights(ihw_res1_single_fold, levels_only=TRUE)),
+         c(nbins(ihw_res1_single_fold), nfolds(ihw_res1_single_fold)))
+
+# same for thresholds
+ts_sorted1 <- sort(unique(as.numeric(thresholds(ihw_res1, levels_only=TRUE))))
+ts_sorted2 <- sort(unique(thresholds(ihw_res1, levels_only=FALSE)))
+expect_equal(ts_sorted1, ts_sorted2)
+
+expect_equal(dim(thresholds(ihw_res1, levels_only=TRUE)), c(nbins(ihw_res1), nfolds(ihw_res1)))
+expect_equal(dim(thresholds(ihw_res1_single_fold, levels_only=TRUE)),
+         c(nbins(ihw_res1_single_fold), nfolds(ihw_res1_single_fold)))
+
+expect_equal(covariate_type(ihw_res1), "ordinal")
+
+expect_equal(alpha(ihw_res1), 0.1)
+expect_equal(alpha(ihw_res1_lower_alpha), 0.01)
+
+expect_true(is.data.frame(as.data.frame(ihw_res1)))
+
+# quick test for show method
+expect_equal(capture.output(ihw_res1), capture.output(ihw_res2))
+
+# now let's also test if ECDF method runs
+sim <- wasserman_normal_sim(2000,0.85, 0, 3, seed=1)
+ihw_naive <- ihw(sim$pvalue, sim$filterstat, .1, nfolds=1L, nbins=3L, lambdas=Inf, distrib_estimator="ECDF")
+# should have increased rejections compared to BH
+# also opportunity to test get_bh_threshold
+expect_less_than( sum(sim$pvalue <= get_bh_threshold(sim$pvalue, .1)), rejections(ihw_naive))
 
