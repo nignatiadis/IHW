@@ -9,7 +9,7 @@
 plot_ihw(x, ...)
 
 \S4method{plot_ihw}{ihwResult}(x, x_axis = "group",
-  scale = x@covariate_type)
+  scale = covariate_type(x))
 }
 \arguments{
 \item{x}{ihwResult Object}

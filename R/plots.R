@@ -26,11 +26,11 @@ setGeneric("plot_ihw", function(x, ...) standardGeneric("plot_ihw"))
 #'
 #' @export
 setMethod("plot_ihw", signature="ihwResult",
-	function(x, x_axis="group", scale=x@covariate_type){
+	function(x, x_axis="group", scale=covariate_type(x)){
 		if (requireNamespace("ggplot2", quietly=TRUE) & (requireNamespace("scales", quietly=TRUE))){
 			ws <- weights(x, levels_only=TRUE)
 			group_levels <- levels(groups_factor(x))
-			folds  <- factor(1:x@nfolds)
+			folds  <- factor(1:nfolds(x))
 			df <- expand.grid(stratum=1:nlevels(groups_factor(x)),
 							  fold=folds)
 			df$group <- group_levels[df$stratum]

@@ -40,3 +40,9 @@ ihw_res_small <- ihw(sim$pvalue, sim$filterstat, .1)
 plot_ihw(ihw_res_small, scale="nominal")
 
 ihw_res_small2 <- ihw(sim$pvalue, sim$filterstat, .05, nbins=2)
+
+
+# now test ihwResult class getters
+expect_equal(nbins(ihw_res1), 10L)
+expect_equal(nfolds(ihw_res1), 5L) # the default choice
+

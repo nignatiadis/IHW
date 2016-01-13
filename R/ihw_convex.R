@@ -834,7 +834,7 @@ ihw_milp <- function(split_sorted_pvalues, alpha, m_groups, lambda=Inf, lp_solve
 					}
 
     ####################################################################################################
-    #	Possible checks of whether solver did not do (important) numerical errors: #TODO 
+    #	Possible checks of whether solver did not do (important) numerical errors: #TODO
     #
     # 1) t_thresholds >= t_thresholds1
     # 2) Plugin FDR has to be controlled (with respect to both t_thresholds, t_thresholds2)

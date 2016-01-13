@@ -7,13 +7,20 @@
 \alias{alpha}
 \alias{alpha,ihwResult-method}
 \alias{as.data.frame,ihwResult-method}
-\alias{as.data.frame.ihwResult}
+\alias{as.data.frame_ihwResult}
+\alias{covariate_type}
+\alias{covariate_type,ihwResult-method}
 \alias{covariates}
 \alias{covariates,ihwResult-method}
 \alias{groups_factor}
 \alias{groups_factor,ihwResult-method}
 \alias{ihwResult}
 \alias{ihwResult-class}
+\alias{nbins}
+\alias{nbins,ihwResult-method}
+\alias{nfolds}
+\alias{nfolds,ihwResult-method}
+\alias{nrow,ihwResult-method}
 \alias{pvalues}
 \alias{pvalues,ihwResult-method}
 \alias{rejected_hypotheses}
@@ -50,9 +57,21 @@ covariates(object)
 
 \S4method{covariates}{ihwResult}(object)
 
+covariate_type(object)
+
+\S4method{covariate_type}{ihwResult}(object)
+
 groups_factor(object)
 
 \S4method{groups_factor}{ihwResult}(object)
+
+nfolds(object)
+
+\S4method{nfolds}{ihwResult}(object)
+
+nbins(object)
+
+\S4method{nbins}{ihwResult}(object)
 
 alpha(object)
 
@@ -66,11 +85,12 @@ rejected_hypotheses(object, ...)
 
 \S4method{rejected_hypotheses}{ihwResult}(object)
 
-\method{as.data.frame}{ihwResult}(x, row.names = NULL, optional = FALSE,
-  ...)
+as.data.frame_ihwResult(x, row.names = NULL, optional = FALSE, ...)
 
 \S4method{as.data.frame}{ihwResult}(x, row.names = NULL, optional = FALSE,
   ...)
+
+\S4method{nrow}{ihwResult}(x)
 
 \S4method{show}{ihwResult}(object)
 }
@@ -81,6 +101,25 @@ rejected_hypotheses(object, ...)
 (threshold) for each hypothesis, otherwise return a nfolds x nbins matrix of weights (thresholds)}
 
 \item{...}{Parameters passed in to individual methods}
+
+\item{row.names, }{optional See ?base::as.data.frame for a description of these arguments.}
+}
+\value{
+The different methods applied to an ihwResult object can return the following:
+
+1) A vector
+    of length equal to the number of hypotheses tested (e.g. the adjusted p-value or the weight
+    of each hypothesis).
+
+2) A matrix of dimension equal to nfolds x nbins (e.g. the weight of
+    each stratum, fold combination, set by specifying levels_only=TRUE).
+
+3) A vector of length 1 (usually a parameter of the ihwResult object such as nfolds or
+    the total number of rejections).
+
+4) A data.frame (as.data.frame) or just console output (show) for the extended Base generics.
+
+See section below for the individual methods.
 }
 \description{
 An S4 class to represent the ihw output.
@@ -99,7 +138,13 @@ An S4 class to represent the ihw output.
 
 \item \code{covariates}: Extract covariates
 
+\item \code{covariate_type}: Extract type of covariate ("ordinal" or "nominal")
+
 \item \code{groups_factor}: Extract factor of stratification (grouping) variable
+
+\item \code{nfolds}: Extract number of folds
+
+\item \code{nbins}: Extract number of bins
 
 \item \code{alpha}: Extract nominal significance (alpha) level
 
@@ -108,6 +153,8 @@ An S4 class to represent the ihw output.
 \item \code{rejected_hypotheses}: Get a boolean vector of the rejected hypotheses
 
 \item \code{as.data.frame}: Coerce ihwResult to data frame
+
+\item \code{nrow}: Return number of p-values
 
 \item \code{show}: Convenience method to show ihwResult object
 }}
