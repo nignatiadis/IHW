@@ -77,7 +77,7 @@ weights_ihwResult <-function(object, levels_only = FALSE){
 #' @param object,x A ihwResult object as returned by a call to ihw(...)
 #' @param levels_only Logical, if FALSE, return a vector of weights (thresholds) with one weight
 #'    (threshold) for each hypothesis, otherwise return a nfolds x nbins matrix of weights (thresholds)
-#' @param row.names, optional See ?base::as.data.frame for a description of these arguments.
+#' @param row.names,optional See ?base::as.data.frame for a description of these arguments.
 #' @param ... Parameters passed in to individual methods
 #' @describeIn ihwResult Extract weights
 #' @export

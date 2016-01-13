@@ -102,7 +102,7 @@ as.data.frame_ihwResult(x, row.names = NULL, optional = FALSE, ...)
 
 \item{...}{Parameters passed in to individual methods}
 
-\item{row.names, }{optional See ?base::as.data.frame for a description of these arguments.}
+\item{row.names, optional}{See ?base::as.data.frame for a description of these arguments.}
 }
 \value{
 The different methods applied to an ihwResult object can return the following:
