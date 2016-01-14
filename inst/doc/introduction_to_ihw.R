@@ -1,4 +1,5 @@
 ## ---- message=FALSE, warning=FALSE---------------------------------------
+library("methods")
 library("airway")
 library("DESeq2")
 data("airway")

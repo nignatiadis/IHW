@@ -34,6 +34,7 @@ In this vignette, we will show how to use the IHW package in differential gene e
 We analyze the airway RNA-Seq dataset using DESeq2 [@love2014moderated].
 
 ```{r, message=FALSE, warning=FALSE}
+library("methods")
 library("airway")
 library("DESeq2")
 data("airway")
