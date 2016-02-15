@@ -51,7 +51,7 @@ colnames(res)
 
 In particular, we have p-values and the baseMean of (normalized) counts for each gene. As argued in the DESeq2 paper, these two statistics are approximately independent under the null hypothesis. Thus we have all the ingredient necessary for a IHW analysis (p-values and covariates), which we will apply at a significance level 0.1.
 
-First load IHW
+First load IHW:
 ```{r, message=FALSE, warning=FALSE}
 library("IHW")
 ihw_res <- ihw(res$pvalue, res$baseMean, alpha = 0.1)
@@ -117,5 +117,64 @@ Below we summarize some examples where such a covariate is available:
  *  For row-wise rank-based tests (e.g. Wilcoxon) we can use any function that does not depend on the order of arguments [@bourgon2010independent].
  *  In DESeq2, we can use baseMean, as illustrated above [@love2014moderated].
  *  In  eQTL analysis we can use the SNP-gene distance, the DNAse sensitivity, the HiC score, etc. 
+
+# Advanced usage: Working with incomplete p-value lists
+
+So far, we have assumed, that a complete list of p-values is available, i.e. one p-value per hypothesis. However, this information is not always available:
+
+ * This can be related to the software tools used for the calculation of the p-values. For example, as noted in [@ochoa2015beyond], some tools such as HMMER, only return the lowest p-values. In addition, other tools, such as MatrixEQTL [@shabalin2012matrix] by default only return p-values below a pre-specified threshold, for example all p-values below $10^{-5}$. In the case of HMMER, this is done because higher p-values are not reliable, while for MatrixEQTL it reduces storage requirements. 
+ * Even if p-values for all hypotheses are available, it might still be infeasible to load all of them into RAM. 
+ 
+Since rejections take place for low p-values (at the tails of the p-value distribution), we do not lose a lot of information by discarding the high p-values from the analysis, as long as we keep track of how many large p-values have been omitted. Thus, the above situations can be easily handled.
+
+Before proceeding with the walkthrough for handling such cases with IHW, we quickly review how this is handled by `p.adjust`. We first simulate some data, where the power under the alternative depends on a covariate. p-values are calculated by a simple one-sided z-test.
+
+```{r}
+set.seed(1)
+X   <- runif(100000, min=0, max=2.5) #covariate
+H   <- rbinom(100000,1,0.1)            #hypothesis true or false
+Z   <- rnorm(100000, H*X)              #Z-score
+pvalue <- 1-pnorm(Z)                  #pvalue
+sim <- data.frame(X=X, H=H, Z=Z, pvalue=pvalue)
+```
+
+We can run Benjamini-Hochberg on these p-values:
+
+```{r}
+sum(p.adjust(sim$pvalue, method="BH") <= 0.1)
+```
+
+Now assume we only have access to the p-values $\leq 0.1$:
+
+```{r}
+filter_threshold <- 0.1
+pvalue_filt <- pvalue[pvalue <= filter_threshold]
+```
+
+Then we can still use `p.adjust`, as long as we inform it of how many hypotheses were really tested (not just the ones with p-value $\leq 0.1$). We specify this by setting the `n` keyword argument.
+
+```{r}
+sum(p.adjust(pvalue_filt, method="BH", n=length(pvalue)) <= 0.1)  
+```
+
+We see that we get exactly the same number of rejections, as when we used the whole p-value vector as input. Now, the same principle applies to IHW, but is slighly more complicated. In particular, we need to provide information about how many hypotheses were conducted at each given value of the covariate. This means that there are two modifications to the standard IHW workflow: 
+
+* For numeric covariates, the user has to manually stratify the hypotheses into `nbins` groups. In other words, continuous covariates will have to be discretized into factors by the user, rather than automatically by IHW.
+* The user has to specify how many hypotheses were conducted for each of the levels of the covariate factor using the `m_groups` keyword argument. When there is only 1 stratum and IHW reduces to BH, `m_groups` would be equivalent to the `n` keyword of `p.adjust`.
+
+For the first modification, a convenience function `groups_by_filter` is provided, which stratifies a numeric covariate into a given number of groups with approximately the same number of hypotheses in each.
+
+```{r}
+nbins <- 20
+sim$group <- groups_by_filter(sim$X, nbins)
+m_groups <- table(sim$group)
+```
+
+Now we can subset our data frame to only keep low p-values and then apply IHW with the manually specified `m_groups`.
+```{r}
+sim_filtered <- subset(sim, sim$pvalue <= filter_threshold) 
+ihw_filt <- ihw(sim_filtered$pvalue, sim_filtered$group, .1, m_groups = m_groups)
+rejections(ihw_filt)
+```
 
 # References

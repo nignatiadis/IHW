@@ -6,6 +6,7 @@
 #' @slot nbins  Integer, number of distinct levels into which the hypotheses were stratified
 #' @slot nfolds  Integer, number of folds for pre-validation procedure
 #' @slot regularization_term Numeric vector, the final value of the regularization parameter within each fold
+#' @slot m_groups Integer vector, number of hypotheses tested in each stratum
 #' @slot penalty  Character, "uniform deviation" or "total variation"
 #' @slot covariate_type  Character, "ordinal" or "nominal"
 #' @slot reg_path_information  A data.frame, information about the whole regularization path. (Currently not used, thus empty)
@@ -45,6 +46,7 @@ ihwResult <- setClass("ihwResult",
                    nbins = "integer",
                    nfolds = "integer",
                    regularization_term = "numeric",
+                   m_groups = "integer",
                    penalty = "character",
                    covariate_type = "character",
                    reg_path_information = "data.frame",

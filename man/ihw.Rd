@@ -5,7 +5,7 @@
 \title{ihw: Main function for Independent Hypothesis Weighting}
 \usage{
 ihw(pvalues, covariates, alpha, covariate_type = "ordinal", nbins = "auto",
-  quiet = TRUE, nfolds = 5L, nfolds_internal = 5L,
+  m_groups = NULL, quiet = TRUE, nfolds = 5L, nfolds_internal = 5L,
   nsplits_internal = 1L, lambdas = "auto", seed = 1L,
   distrib_estimator = "grenander", lp_solver = "lpsymphony",
   return_internal = FALSE, ...)
@@ -22,6 +22,11 @@ for each test. Can be numeric or a factor. (If numeric it will be converted into
 
 \item{nbins}{Integer, number of groups into which p-values will be split based on covariate. Use "auto" for
 automatic selection of the number of bins. Only applicable when covariates is not a factor.}
+
+\item{m_groups}{Integer vector of length equal to the number of levels of the covariates (only to be specified
+when the latter is a factor). Each entry corresponds to the number of hypotheses to be tested in
+each group (stratum). To be used when the complete vector of p-values is not available,
+but only p-values below a given threshold, for example because of memory reasons.}
 
 \item{quiet}{Boolean, if False a lot of messages are printed during the fitting stages.}
 

@@ -1,7 +1,18 @@
-  
-
-groups_by_filter <- function(filter_statistic, nbins){
-	rfs <- rank(filter_statistic, ties.method="first")/length(filter_statistic)
+#' Stratify hypotheses based on increasing value of the covariate
+#'
+#'  Hypotheses are stratified into nbins different strata of (approximately) equal size based on
+#' increasing value of the covariate
+#'
+#' @param covariate Numeric vector of ordinal covariates based on which the stratification will be done.
+#' @param nbins Integer, number of groups/strata into which p-values will be split based on covariate.
+#'
+#' @return A factor with nbins different levels, each entry corresponds to the stratum the i-th hypothesis
+#'  was assigned to.
+#' @examples
+#'  
+#' @export
+groups_by_filter <- function(covariate, nbins){
+	rfs <- rank(covariate, ties.method="first")/length(covariate)
 	as.factor(ceiling( rfs* nbins))
 }
 

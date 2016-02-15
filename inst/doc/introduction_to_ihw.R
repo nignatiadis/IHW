@@ -37,3 +37,31 @@ plot_ihw(ihw_res)
 ## ------------------------------------------------------------------------
 colnames(as.data.frame(ihw_res))
 
+## ------------------------------------------------------------------------
+set.seed(1)
+X   <- runif(100000, min=0, max=2.5) #covariate
+H   <- rbinom(100000,1,0.1)            #hypothesis true or false
+Z   <- rnorm(100000, H*X)              #Z-score
+pvalue <- 1-pnorm(Z)                  #pvalue
+sim <- data.frame(X=X, H=H, Z=Z, pvalue=pvalue)
+
+## ------------------------------------------------------------------------
+sum(p.adjust(sim$pvalue, method="BH") <= 0.1)
+
+## ------------------------------------------------------------------------
+filter_threshold <- 0.1
+pvalue_filt <- pvalue[pvalue <= filter_threshold]
+
+## ------------------------------------------------------------------------
+sum(p.adjust(pvalue_filt, method="BH", n=length(pvalue)) <= 0.1)  
+
+## ------------------------------------------------------------------------
+nbins <- 20
+sim$group <- groups_by_filter(sim$X, nbins)
+m_groups <- table(sim$group)
+
+## ------------------------------------------------------------------------
+sim_filtered <- subset(sim, sim$pvalue <= filter_threshold) 
+ihw_filt <- ihw(sim_filtered$pvalue, sim_filtered$group, .1, m_groups = m_groups)
+rejections(ihw_filt)
+
