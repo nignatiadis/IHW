@@ -20,6 +20,8 @@ Hypotheses are stratified into nbins different strata of (approximately) equal s
 increasing value of the covariate
 }
 \examples{
- 
+ covariates <- runif(100)
+ groups <- groups_by_filter(covariates,10)
+ table(groups)
 }
 

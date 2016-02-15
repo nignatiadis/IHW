@@ -9,7 +9,9 @@
 #' @return A factor with nbins different levels, each entry corresponds to the stratum the i-th hypothesis
 #'  was assigned to.
 #' @examples
-#'  
+#'  covariates <- runif(100)
+#'  groups <- groups_by_filter(covariates,10)
+#'  table(groups)
 #' @export
 groups_by_filter <- function(covariate, nbins){
 	rfs <- rank(covariate, ties.method="first")/length(covariate)
