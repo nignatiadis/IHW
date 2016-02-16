@@ -9,6 +9,7 @@
 #' @slot m_groups Integer vector, number of hypotheses tested in each stratum
 #' @slot penalty  Character, "uniform deviation" or "total variation"
 #' @slot covariate_type  Character, "ordinal" or "nominal"
+#' @slot adjustment_type  Character, "BH" or "bonferroni"
 #' @slot reg_path_information  A data.frame, information about the whole regularization path. (Currently not used, thus empty)
 #' @slot solver_information  A list, solver specific output, e.g. were all subproblems solved to optimality? (Currently empty list)
 #'
@@ -49,6 +50,7 @@ ihwResult <- setClass("ihwResult",
                    m_groups = "integer",
                    penalty = "character",
                    covariate_type = "character",
+                   adjustment_type = "character",
                    reg_path_information = "data.frame",
            		     solver_information= "list"))
 

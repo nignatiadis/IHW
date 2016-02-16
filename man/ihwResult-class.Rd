@@ -179,6 +179,8 @@ An S4 class to represent the ihw output.
 
 \item{\code{covariate_type}}{Character, "ordinal" or "nominal"}
 
+\item{\code{adjustment_type}}{Character, "BH" or "bonferroni"}
+
 \item{\code{reg_path_information}}{A data.frame, information about the whole regularization path. (Currently not used, thus empty)}
 
 \item{\code{solver_information}}{A list, solver specific output, e.g. were all subproblems solved to optimality? (Currently empty list)}

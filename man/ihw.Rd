@@ -8,7 +8,7 @@ ihw(pvalues, covariates, alpha, covariate_type = "ordinal", nbins = "auto",
   m_groups = NULL, quiet = TRUE, nfolds = 5L, nfolds_internal = 5L,
   nsplits_internal = 1L, lambdas = "auto", seed = 1L,
   distrib_estimator = "grenander", lp_solver = "lpsymphony",
-  return_internal = FALSE, ...)
+  adjustment_type = "BH", return_internal = FALSE, ...)
 }
 \arguments{
 \item{pvalues}{Numeric vector of unadjusted p-values.}
@@ -49,6 +49,8 @@ or lp_solver == "lpsymphony" will in general be excessively slow, except for ver
 
 \item{lp_solver}{Character ("lpsymphony" or "gurobi"). Internally, IHW solves a sequence of linear programs, which
 can be solved with either of these solvers.}
+
+\item{adjustment_type}{Character ("BH" or "bonferroni") depending on whether you want to control FDR or FWER.}
 
 \item{return_internal}{Returns a lower level representation of the output (only useful for debugging purposes).}
 

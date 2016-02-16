@@ -29,6 +29,7 @@
 #'              or lp_solver == "lpsymphony" will in general be excessively slow, except for very small problems.
 #' @param lp_solver  Character ("lpsymphony" or "gurobi"). Internally, IHW solves a sequence of linear programs, which
 #'        can be solved with either of these solvers.
+#' @param adjustment_type Character ("BH" or "bonferroni") depending on whether you want to control FDR or FWER.
 #' @param return_internal Returns a lower level representation of the output (only useful for debugging purposes).
 #' @param ... Arguments passed to internal functions.
 #'
@@ -59,12 +60,21 @@ ihw <- function(pvalues, covariates, alpha,
 						seed = 1L,
 						distrib_estimator = "grenander",
 						lp_solver="lpsymphony",
+						adjustment_type = "BH",
 						return_internal=FALSE,
 						...){
 
 	# This function essentially wraps the lower level function ihw_internal
 	# e.g. takes care of NAs, sorts pvalues and then
 	# returns a nice ihw object
+
+	if (!adjustment_type %in% c("BH","bonferroni")){
+		stop("IHW currently only works with BH or bonferroni types of multiple testing corrections")
+	}
+
+	if (adjustment_type == "bonferroni" & distrib_estimator != "grenander"){
+		stop("For Bonferroni-like FWER adjustment currently only the grenander estimator is supported.")
+	}
 
 	nfolds <- as.integer(nfolds)
 	nfolds_internal <- as.integer(nfolds_internal)
@@ -164,7 +174,7 @@ ihw <- function(pvalues, covariates, alpha,
 		nfolds_internal <- 1L
 		nsplits_internal <- 1L
 		message("Only 1 bin; IHW reduces to Benjamini Hochberg (uniform weights)")
-		sorted_adj_p <- p.adjust(sorted_pvalues, method="BH", n=sum(m_groups))
+		sorted_adj_p <- p.adjust(sorted_pvalues, method=adjustment_type, n=sum(m_groups))
 		rjs <- sum(sorted_adj_p <= alpha)
 		res <- list(lambda=0, fold_lambdas=0, rjs=rjs, sorted_pvalues=sorted_pvalues,
 					sorted_weighted_pvalues = sorted_pvalues,
@@ -183,6 +193,7 @@ ihw <- function(pvalues, covariates, alpha,
 						seed=NULL,
 						distrib_estimator = distrib_estimator,
 						lp_solver=lp_solver,
+						adjustment_type=adjustment_type,
 						...)
 	}
 
@@ -218,6 +229,7 @@ ihw <- function(pvalues, covariates, alpha,
 					m_groups = as.integer(m_groups),
 					penalty = penalty,
 					covariate_type = covariate_type,
+					adjustment_type = adjustment_type,
 					reg_path_information = data.frame(),
 		 			solver_information = list())
 
@@ -236,6 +248,7 @@ ihw_internal <- function(sorted_groups, sorted_pvalues, alpha, lambdas,
 								nsplits_internal = 1L,
 								distrib_estimator = "distrib_estimator",
 								lp_solver="lpsymphony",
+								adjustment_type="BH",
 								debug_flag=FALSE,
 								...){
 
@@ -298,7 +311,8 @@ ihw_internal <- function(sorted_groups, sorted_pvalues, alpha, lambdas,
 									    	seed=NULL, quiet=quiet,
 									    	nfolds=nfolds_internal,
 									    	distrib_estimator = distrib_estimator,
-									    	lp_solver=lp_solver)$rjs
+									    	lp_solver=lp_solver,
+									    	adjustment_type=adjustment_type)$rjs
 				}
 				if (debug_flag==TRUE){
 					rjs_path_mat[i,k] <- rjs[k] #only works for nsplits_internal currently
@@ -317,7 +331,8 @@ ihw_internal <- function(sorted_groups, sorted_pvalues, alpha, lambdas,
 		if (distrib_estimator=="grenander"){
 			res <- ihw_convex(filtered_split_sorted_pvalues, alpha,
 						   m_groups_holdout_fold, m_groups_other_folds,
-						   penalty=penalty, lambda=lambda, lp_solver=lp_solver, quiet=quiet,...)
+						   penalty=penalty, lambda=lambda, lp_solver=lp_solver, 
+						   adjustment_type=adjustment_type, quiet=quiet,...)
 		} else if (distrib_estimator == "ECDF"){
 			res <- ihw_milp(filtered_split_sorted_pvalues, alpha, m_groups_holdout_fold,
 				           penalty=penalty, lambda=lambda, lp_solver=lp_solver, ...)
@@ -330,7 +345,7 @@ ihw_internal <- function(sorted_groups, sorted_pvalues, alpha, lambdas,
 	}
 
 	sorted_weighted_pvalues <- mydiv(sorted_pvalues, sorted_weights)
-	sorted_adj_p <- p.adjust(sorted_weighted_pvalues, method = "BH", n = sum(m_groups))
+	sorted_adj_p <- p.adjust(sorted_weighted_pvalues, method = adjustment_type, n = sum(m_groups))
 	rjs   <- sum(sorted_adj_p <= alpha)
 	lst <- list(lambda=lambda, fold_lambdas=fold_lambdas, rjs=rjs, sorted_pvalues=sorted_pvalues,
 					sorted_weighted_pvalues = sorted_weighted_pvalues,
@@ -347,7 +362,8 @@ ihw_internal <- function(sorted_groups, sorted_pvalues, alpha, lambdas,
 #' @importFrom slam simple_triplet_zero_matrix simple_triplet_matrix
 #' @importFrom lpsymphony lpsymphony_solve_LP
 ihw_convex <- function(split_sorted_pvalues, alpha, m_groups, m_groups_grenander,
-		penalty="total variation", lambda=Inf, lp_solver="gurobi", quiet=quiet){
+		penalty="total variation", lambda=Inf, lp_solver="gurobi",
+		adjustment_type= "BH", quiet=quiet){
 
 	# m_groups used for balancing (weight budget)
 	# m_groups_grenander (used for grenander estimator)
@@ -453,11 +469,24 @@ ihw_convex <- function(split_sorted_pvalues, alpha, m_groups, m_groups_grenander
 		}
 	}
 
-	# incorporate the FDR constraint
-	fdr_constr<- matrix(c(rep(-alpha,nbins)*m_groups, rep(1,nbins)*m_groups, rep(0,ncol(constr_matrix)-2*nbins)), nrow=1)
-	constr_matrix <- rbind(constr_matrix, fdr_constr)
+	if (adjustment_type == "BH"){
+		# incorporate the FDR constraint
+		fdr_constr<- matrix(c(rep(-alpha,nbins)*m_groups,
+						      rep(1,nbins)*m_groups,
+						      rep(0,ncol(constr_matrix)-2*nbins)), nrow=1)
+		constr_matrix <- rbind(constr_matrix, fdr_constr)
+		rhs <- c(rhs,0)
+	} else if (adjustment_type == "bonferroni"){
+		# incorporate the FWER constraint
+		fwer_constr<- matrix(c(rep(0,nbins),
+						      rep(1,nbins)*m_groups,
+						      rep(0,ncol(constr_matrix)-2*nbins)), nrow=1)
+		constr_matrix <- rbind(constr_matrix, fwer_constr)
+		rhs <- c(rhs,alpha)
+	} else {
+		stop("Only BH-like and bonferroni-like adjustments available.")
+	}
 	nvars <- ncol(constr_matrix)
-	rhs <- c(rhs,0)
 
 	if (!quiet) message("Starting to solve LP.")
 

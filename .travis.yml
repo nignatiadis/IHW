@@ -9,9 +9,6 @@ before_install:
 install:
   - ./pkg-build.sh install_github jimhester/covr
   - ./pkg-build.sh install_bioc BiocCheck
-  - ./pkg-build.sh install_bioc DESeq
-  - ./pkg-build.sh install_bioc DESeq2
-  - ./pkg-build.sh install_bioc airway
   - ./pkg-build.sh install_bioc_deps
 
 script:
