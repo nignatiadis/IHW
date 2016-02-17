@@ -213,6 +213,15 @@ setGeneric("alpha", function(object) standardGeneric("alpha"))
 setMethod("alpha", signature(object="ihwResult"),
           alpha_ihwResult)
 
+#----------------- adjustment type extraction ----------------------------------------------------------------------#
+adjustment_type_ihwResult <-function(object) object@adjustment_type
+
+setGeneric("adjustment_type", function(object) standardGeneric("adjustment_type"))
+
+setMethod("adjustment_type", signature(object="ihwResult"),
+          adjustment_type_ihwResult)
+
+
 #----------------- rejections ------------------------------------------------------------------------------------#
 
 
@@ -265,8 +274,16 @@ setMethod("nrow", "ihwResult", function(x) nrow(x@df))
 #' @importFrom methods show
 #' @export
 setMethod("show", signature(object="ihwResult"), function(object) {
+  adj_type <- adjustment_type(object)
+  if (adj_type == "BH"){
+    typeI_error <- "FDR"
+  } else if (adj_type == "bonferroni"){
+    typeI_error <- "FWER"
+  } else {
+    stop("Adjustment method appears to be invalid, corrupted IHW object.")
+  }
   cat("ihwResult object with", nrow(object),"hypothesis tests \n")
-  cat("Nominal FDR control level:", alpha(object),"\n")
+  cat("Nominal",  typeI_error, "control level:", alpha(object),"\n")
   cat("Split into", nbins(object),"bins, based on an", covariate_type(object), "covariate\n")
 })
 

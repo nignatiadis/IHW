@@ -24,9 +24,11 @@ for each test. Can be numeric or a factor. (If numeric it will be converted into
 automatic selection of the number of bins. Only applicable when covariates is not a factor.}
 
 \item{m_groups}{Integer vector of length equal to the number of levels of the covariates (only to be specified
-when the latter is a factor). Each entry corresponds to the number of hypotheses to be tested in
-each group (stratum). To be used when the complete vector of p-values is not available,
-but only p-values below a given threshold, for example because of memory reasons.}
+when the latter is a factor/categorical). Each entry corresponds to the number of hypotheses to be tested in
+each group (stratum). This argument needs to be given when the complete vector of p-values is
+not available, but only p-values below a given threshold, for example because of memory reasons.
+See the vignette for additional details and an example of how this principle can be applied with
+numerical covariates.}
 
 \item{quiet}{Boolean, if False a lot of messages are printed during the fitting stages.}
 
@@ -61,18 +63,22 @@ A ihwResult object.
 }
 \description{
 Given a vector of p-values, a vector of covariates which are independent of the p-values under the null hypothesis and
-a nominal significance level alpha, IHW learns multiple testing weights and then applies the weighted Benjamini Hochberg 
-procedure.
+a nominal significance level alpha, IHW learns multiple testing weights and then applies the weighted Benjamini Hochberg
+(or Bonferroni) procedure.
 }
 \examples{
 
 save.seed <- .Random.seed; set.seed(1)
-X   <- runif(20000, min=0.5, max=4.5) #covariate
-H   <- rbinom(20000,1,0.1)            #hypothesis true or false
-Z   <- rnorm(20000, H*X)              #Z-score
+X   <- runif(20000, min=0, max=2.5)   # covariate
+H   <- rbinom(20000,1,0.1)            # hypothesis true or false
+Z   <- rnorm(20000, H*X)              # Z-score
 .Random.seed <- save.seed
-pvalue <- 1-pnorm(Z)                  #pvalue
-ihw_res <- ihw(pvalue, X, .1)
+pvalue <- 1-pnorm(Z)                  # pvalue
+
+ihw_fdr <- ihw(pvalue, X, .1)        # Standard IHW for FDR control
+ihw_fwer <- ihw(pvalue, X, .1, adjustment_type = "bonferroni")    # FWER control
+table(H[adj_pvalues(ihw_fdr) <= 0.1] == 0) #how many false rejections?
+table(H[adj_pvalues(ihw_fwer) <= 0.1] == 0)
 
 
 }

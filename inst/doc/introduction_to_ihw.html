@@ -10,7 +10,7 @@
 
 <meta name="author" content="Nikos Ignatiadis" />
 
-<meta name="date" content="2016-02-15" />
+<meta name="date" content="2016-02-17" />
 
 <title>Introduction to IHW</title>
 
@@ -51,9 +51,9 @@ document.addEventListener("DOMContentLoaded", function() {
 <div id="header">
 <h1 class="title">Introduction to IHW</h1>
 <h4 class="author"><em>Nikos Ignatiadis</em></h4>
-<h4 class="date"><em>15 February 2016</em></h4>
+<h4 class="date"><em>17 February 2016</em></h4>
 </div>
-<h4 class="package">Package version: <span style="font-weight: normal">IHW 0.99.6</span></h4>
+<h4 class="package">Package version: <span style="font-weight: normal">IHW 0.99.7</span></h4>
 
 <h1>Contents</h1>
 <div id="TOC">
@@ -162,10 +162,10 @@ sum(padj_bh &lt;= 0.1, na.rm = TRUE)</code></pre>
 </div>
 <div id="advanced-usage-working-with-incomplete-p-value-lists" class="section level1">
 <h1><span class="header-section-number">4</span> Advanced usage: Working with incomplete p-value lists</h1>
-<p>So far, we have assumed, that a complete list of p-values is available, i.e. one p-value per hypothesis. However, this information is not always available:</p>
+<p>So far, we have assumed, that a complete list of p-values is available, i.e. one p-value per hypothesis. However, this information is not always available or practical:</p>
 <ul>
 <li>This can be related to the software tools used for the calculation of the p-values. For example, as noted in <span class="citation">(Ochoa et al. 2015)</span>, some tools such as HMMER, only return the lowest p-values. In addition, other tools, such as MatrixEQTL <span class="citation">(Shabalin 2012)</span> by default only return p-values below a pre-specified threshold, for example all p-values below <span class="math">\(10^{-5}\)</span>. In the case of HMMER, this is done because higher p-values are not reliable, while for MatrixEQTL it reduces storage requirements.</li>
-<li>Even if p-values for all hypotheses are available, it might still be infeasible to load all of them into RAM.</li>
+<li>Even if p-values for all hypotheses are available, it might still be infeasible to load all of them into RAM. In addition, it could be possible that the p-value vector only barely fits into RAM, so that the subsequent IHW call will run out of memory or will be very slow.</li>
 </ul>
 <p>Since rejections take place for low p-values (at the tails of the p-value distribution), we do not lose a lot of information by discarding the high p-values from the analysis, as long as we keep track of how many large p-values have been omitted. Thus, the above situations can be easily handled.</p>
 <p>Before proceeding with the walkthrough for handling such cases with IHW, we quickly review how this is handled by <code>p.adjust</code>. We first simulate some data, where the power under the alternative depends on a covariate. p-values are calculated by a simple one-sided z-test.</p>
@@ -186,10 +186,10 @@ pvalue_filt &lt;- pvalue[pvalue &lt;= filter_threshold]</code></pre>
 <pre><code>## [1] 501</code></pre>
 <p>We see that we get exactly the same number of rejections, as when we used the whole p-value vector as input. Now, the same principle applies to IHW, but is slighly more complicated. In particular, we need to provide information about how many hypotheses were conducted at each given value of the covariate. This means that there are two modifications to the standard IHW workflow:</p>
 <ul>
-<li>For numeric covariates, the user has to manually stratify the hypotheses into <code>nbins</code> groups. In other words, continuous covariates will have to be discretized into factors by the user, rather than automatically by IHW.</li>
-<li>The user has to specify how many hypotheses were conducted for each of the levels of the covariate factor using the <code>m_groups</code> keyword argument. When there is only 1 stratum and IHW reduces to BH, <code>m_groups</code> would be equivalent to the <code>n</code> keyword of <code>p.adjust</code>.</li>
+<li>If a numeric covariate is provided, IHW internally discretizes it and in this way bins the hypotheses into groups (strata). For the advanced functionality, this discretization has to be done manually by the user. In other words, the covariate provided by the user will have to be a factor. For this, the convenience function <code>groups_by_filter</code> is provided, which returns a factor that stratifies a numeric covariate into a given number of groups with approximately the same number of hypotheses in each of the groups.</li>
+<li>For the algorithm to work correctly, it is necessary to know the total number of hypotheses in each of the bins. However, if filtered p-values are used, IHW obviously cannot infer the number of hypotheses per bin automatically.Therefore, the user has to specify the number of hypotheses per bin manually via the <code>m_groups</code> option. (When there is only 1 bin, IHW reduces to BH and <code>m_groups</code> would be equivalent to the <code>n</code> keyword of <code>p.adjust</code>.)</li>
 </ul>
-<p>For the first modification, a convenience function <code>groups_by_filter</code> is provided, which stratifies a numeric covariate into a given number of groups with approximately the same number of hypotheses in each.</p>
+<p>For example, when the whole grouping factor is available (e.g. when it was generated by using <code>groups_by_filter</code> on the full vector of covariates), then one can apply the <code>table</code> function on it to calculate the number of hypotheses per bin. This is then used as an input for the <code>m_groups</code> argument. More elaborate strategies might be needed in more complicated case, e.g. when the full vector of covariates can also not fit into RAM.</p>
 <pre class="r"><code>nbins &lt;- 20
 sim$group &lt;- groups_by_filter(sim$X, nbins)
 m_groups &lt;- table(sim$group)</code></pre>
