@@ -18,7 +18,8 @@ Imports:
     methods,
     slam,
     lpsymphony,
-    fdrtool
+    fdrtool,
+    BiocGenerics
 Suggests:
     ggplot2,
     scales,

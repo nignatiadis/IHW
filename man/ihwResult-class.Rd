@@ -200,6 +200,6 @@ colnames(as.data.frame(ihw_res))
 
 }
 \seealso{
-ihw, plot_ihw
+ihw, plot,ihwResult-method
 }
 

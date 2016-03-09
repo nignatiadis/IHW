@@ -37,7 +37,7 @@
 #' @param ... Arguments passed to internal functions.
 #'
 #' @return A ihwResult object.
-#' @seealso ihwResult, plot_ihw
+#' @seealso ihwResult, plot,ihwResult-method
 #'
 #' @examples
 #'
@@ -116,7 +116,7 @@ ihw <- function(pvalues, covariates, alpha,
 		}
 
 		if (nbins == "auto"){
-			nbins <- max(1,min(300, floor(length(pvalues)/1500))) # rule of thumb..
+			nbins <- max(1,min(40, floor(length(pvalues)/1500))) # rule of thumb..
 		}
 		groups <- as.factor(groups_by_filter(covariates, nbins))
 		penalty <- "total variation"
@@ -159,6 +159,8 @@ ihw <- function(pvalues, covariates, alpha,
 
 	if (is.null(m_groups)) {
 		m_groups <- table(sorted_groups)
+	} else {
+		# TODO: also check if m_groups entered by user is plausible based on observed m_groups and max p_value
 	}
 
 	if (length(group_levels) != length(m_groups)){
@@ -166,7 +168,7 @@ ihw <- function(pvalues, covariates, alpha,
 	}
 	# once we have groups, check whether they include enough p-values
 	if (nbins > 1 & any(m_groups < 1000)){
-		message("In general, data-driven choice of weights requires at least 1000 p-values per stratum.")
+		message("We recommend that you supply (many) more than 1000 p-values for meaningful data-driven hypothesis weighting results.")
 	}
 
 	if (!is.null(seed)){

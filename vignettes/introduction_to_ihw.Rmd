@@ -96,7 +96,7 @@ weights(ihw_res, levels_only=TRUE)
 Finally, IHW contains a convenience function to visualize the estimated weights:
 
 ```{r}
-plot_ihw(ihw_res)
+plot(ihw_res)
 ```
 
 Here we see that the general trend is driven by the covariate (stratum) and not as much by the fold. Also as expected, genes with very low baseMean count get assigned a weight of 0, while genes with high baseMean count get prioritized.

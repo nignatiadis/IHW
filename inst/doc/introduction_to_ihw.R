@@ -32,7 +32,7 @@ head(weights(ihw_res))
 weights(ihw_res, levels_only=TRUE)
 
 ## ------------------------------------------------------------------------
-plot_ihw(ihw_res)
+plot(ihw_res)
 
 ## ------------------------------------------------------------------------
 colnames(as.data.frame(ihw_res))

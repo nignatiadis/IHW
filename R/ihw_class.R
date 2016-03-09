@@ -36,7 +36,7 @@
 #' rejections(ihw_res)
 #' colnames(as.data.frame(ihw_res))
 #'
-#' @seealso ihw, plot_ihw
+#' @seealso ihw, plot,ihwResult-method
 #' @import methods
 
 ihwResult <- setClass("ihwResult",
@@ -263,6 +263,7 @@ as.data.frame_ihwResult <-function(x,row.names=NULL, optional=FALSE, ...){
       }
 
 #' @describeIn ihwResult Coerce ihwResult to data frame
+#' @importFrom BiocGenerics as.data.frame
 #' @export
 setMethod("as.data.frame", "ihwResult",as.data.frame_ihwResult)
 

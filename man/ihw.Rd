@@ -83,6 +83,6 @@ table(H[adj_pvalues(ihw_fwer) <= 0.1] == 0)
 
 }
 \seealso{
-ihwResult, plot_ihw
+ihwResult, plot,ihwResult-method
 }
 
