@@ -1,4 +1,5 @@
 ## ---- message=FALSE, warning=FALSE---------------------------------------
+library("ggplot2")
 library("methods")
 library("airway")
 library("DESeq2")
@@ -36,6 +37,40 @@ plot(ihw_res)
 
 ## ------------------------------------------------------------------------
 colnames(as.data.frame(ihw_res))
+
+## ----eval=FALSE----------------------------------------------------------
+#  ihw_bonf <- ihw(res$pvalue, res$baseMean, alpha = 0.1, adjustment_type="bonferroni")
+
+## ------------------------------------------------------------------------
+res <- na.omit(as.data.frame(res))
+res$geneid <- as.numeric(as.numeric(gsub("ENSG[+]*", "", rownames(res))))
+
+# set up data frame for plotting
+df <- rbind(data.frame(pvalue = res$pvalue, covariate = rank(res$baseMean)/nrow(res), 
+                       covariate_type="base mean"),
+            data.frame(pvalue = res$pvalue, covariate = rank(res$geneid)/nrow(res), 
+                       covariate_type="gene id"))
+
+ggplot(df, aes(x=covariate, y=-log10(pvalue))) +
+                         geom_point(alpha=0.3) + 
+                         facet_grid(.~covariate_type)
+
+## ------------------------------------------------------------------------
+ggplot(res, aes(x=pvalue)) + geom_histogram(bins=20)
+
+## ------------------------------------------------------------------------
+res$baseMean_group <- groups_by_filter(res$baseMean,8)
+
+ggplot(res, aes(x=pvalue)) + 
+  geom_histogram(bins=20) +
+  facet_wrap(~baseMean_group, nrow=2)
+
+## ------------------------------------------------------------------------
+res$lfc_group <- groups_by_filter(abs(res$log2FoldChange),8)
+
+ggplot(res, aes(x=pvalue)) + 
+  geom_histogram(bins=20) +
+  facet_wrap(~lfc_group, nrow=2)
 
 ## ------------------------------------------------------------------------
 set.seed(1)

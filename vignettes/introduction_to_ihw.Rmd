@@ -31,9 +31,11 @@ In this vignette, we will show how to use the IHW package in differential gene e
 
 # IHW and DESeq2
 
-We analyze the airway RNA-Seq dataset using DESeq2 [@love2014moderated].
+## IHW for FDR control
+We analyze the `r Biocpkg("airway")` RNA-Seq dataset using `r Biocpkg("DESeq2")` [@love2014moderated].
 
 ```{r, message=FALSE, warning=FALSE}
+library("ggplot2")
 library("methods")
 library("airway")
 library("DESeq2")
@@ -107,16 +109,101 @@ As a further convenience for further work, a ihwResult object can be converted t
 colnames(as.data.frame(ihw_res))
 ```
 
-# Regarding the covariate
+## IHW for FWER control
+The standard IHW method presented above controls the FDR by using a weighted Benjamini-Hochberg procedure with data-driven weights. The same principle can be applied for FWER control by using a weighted Bonferroni procedure. Everything works exactly as above by using the keyword argument `adjustment_type`. For example:
 
-In which cases is IHW applicable? Whenever we have a covariate which is both informative of power and independent of the p-values under the null hypothesis.
+```{r eval=FALSE}
+ihw_bonf <- ihw(res$pvalue, res$baseMean, alpha = 0.1, adjustment_type="bonferroni")
+```
 
+
+# Choice of a covariate
+
+## The necessary criteria for choice of a covariate
+In which cases is IHW applicable? Whenever we have a covariate which is:
+
+1. informative of power
+2. independent of the p-values under the null hypothesis
+3. not notably related to the dependence structure -if there is any- of the joint test statistics.
+
+
+## A few examples of such covariates
 Below we summarize some examples where such a covariate is available:
 
  *  For row-wise $t$-tests we can use the overall (row-wise) variance [@bourgon2010independent]. 
  *  For row-wise rank-based tests (e.g. Wilcoxon) we can use any function that does not depend on the order of arguments [@bourgon2010independent].
  *  In DESeq2, we can use baseMean, as illustrated above [@love2014moderated].
  *  In  eQTL analysis we can use the SNP-gene distance, the DNAse sensitivity, the HiC score, etc. 
+
+## Why are the different covariate criteria necessary?
+The power gains of IHW are related to property 1, while its statistical validity relies on properties 2 and 3. For many practically useful combinations of covariates with test statistics, property 1 is easy to prove (e.g. through Basu's theorem as in the $t$-test/variance example ), while for others it follows by the use of deterministic covariates and well calibrated p-values (as in the SNP-gene distance example). Property 3 is more complicated from a theoretical perspective, but rarely presents a problem in practice for a well thought out covariate and for test statistics whose correlations do not impede the statistical validity of Benjamini Hochberg without any weighting. In particular, if one expects correlations among the tests, then one should take care to use a covariate, which is not a driving force behind these correlations. For example, in eQTL studies, the absolute position of each SNP tested on the given chromosome is not a valid covariate, because the position is related to linkage disequilibrium (LD) and thus correlation among tests. On the other hand, note that the distance between SNPs and genes is not directly related to the correlation of test statistics.
+
+
+## Diagnostic plots for the covariate
+
+Below we describe a few useful diagnostics to check whether the criteria for the covariates are applicable. If any of these are violated, then one should not use IHW with the given covariate.
+
+### Scatter plots
+
+To check whether the covariate is informative about power under the alternative (property 1), one should plot the p-values (often $-log_{10}(\text{p-value})$) against the ranks of the covariate:
+
+```{r}
+res <- na.omit(as.data.frame(res))
+res$geneid <- as.numeric(as.numeric(gsub("ENSG[+]*", "", rownames(res))))
+
+# set up data frame for plotting
+df <- rbind(data.frame(pvalue = res$pvalue, covariate = rank(res$baseMean)/nrow(res), 
+                       covariate_type="base mean"),
+            data.frame(pvalue = res$pvalue, covariate = rank(res$geneid)/nrow(res), 
+                       covariate_type="gene id"))
+
+ggplot(df, aes(x=covariate, y=-log10(pvalue))) +
+                         geom_point(alpha=0.3) + 
+                         facet_grid(.~covariate_type)
+```
+
+On the left, we plotted $-log_{10}(\text{p-value})$ agains the (normalized) ranks of the base mean of normalized counts. This was the covariate we used in our DESeq2 example above. We see a very clear trend: Low p-values are enriched at high covariate values. For very low covariate values, there are almost no low p-values. This indicates that the base mean covariate is correlated with power under the alternative.
+
+On the other hand, the right plot uses a less useful statistic; the gene identifiers interpreted as numbers. Here, there is no obvious trend to be detected.
+
+### Stratified p-value histograms
+
+One of the most useful diagnostic plots, before applying any multiple testing procedure, is to inspect the p-calue histogram. We first do this for our DESeq2 p-values:
+
+```{r}
+ggplot(res, aes(x=pvalue)) + geom_histogram(bins=20)
+```
+
+This is a well calibrated histogram. As expected, for large p-values (e.g. for p-values $\geq 0.5$) the distribution is uniform. This part of the histogram corresponds mainly to null p-values. On the other hand, there is a peak close to 0. This is due to the alternative hypotheses and can be observed whenever the tests have enough power to detect the alternative. In particular, in the  `r Biocpkg("airway")` dataset, as analyzed with DESeq2, we have a lot of power to detect differentially expressed genes. If you are not familiar with these concepts and more generally with interpreting p-value histograms, we recommend reading [David Robinson's blog post](http://varianceexplained.org/statistics/interpreting-pvalue-histogram/).
+
+Now, when applying IHW with covariates, it is instrumental to not only check the histogram over all p-values, but also to check histograms stratified by the covariate. 
+
+Here we split the hypotheses by the base mean of normalized counts into a few strata and then visualize the conditional histograms:
+
+```{r}
+res$baseMean_group <- groups_by_filter(res$baseMean,8)
+
+ggplot(res, aes(x=pvalue)) + 
+  geom_histogram(bins=20) +
+  facet_wrap(~baseMean_group, nrow=2)
+```
+
+Notice that all of these histograms are well calibrated, since all of them show a uniform distribution at large p-values. In almost all realistic examples, if this is the case, then IHW will control the FDR. Thus, this is a good check of whether properties 2 and 3 hold. In addition, these conditional histograms also illustrate whether property 1 holds: Notice that as we move to strata corresponding to higher mean counts, the peak close to 0 becomes taller and the height of the uniform tail becomes lower. This means that the covariate is associated with power under the alternative.
+
+Finally, as an example of an invalid covariate, we use the estimated log fold change. Of course, this is not independent of the p-values under the null hypothesis. We confirm this by plotting conditional histograms, which are not well calibrated:
+
+```{r}
+res$lfc_group <- groups_by_filter(abs(res$log2FoldChange),8)
+
+ggplot(res, aes(x=pvalue)) + 
+  geom_histogram(bins=20) +
+  facet_wrap(~lfc_group, nrow=2)
+```
+
+
+
+## Further reading about appropriate covariates
+For more details regarding choice and diagnostics of covariates, please also consult the Independent Filtering paper  [@bourgon2010independent], as well as the `r Biocpkg("genefilter")` vignettes.
 
 # Advanced usage: Working with incomplete p-value lists
 
