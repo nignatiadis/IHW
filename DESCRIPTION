@@ -1,6 +1,6 @@
 Package: IHW
 Title: Independent Hypothesis Weighting
-Version: 0.99.7
+Version: 0.99.8
 Authors@R: person("Nikos", "Ignatiadis", email = "nikos.ignatiadis01@gmail.com",
                   role = c("aut", "cre"))
 Description: Independent hypothesis weighting (IHW) is a multiple testing
@@ -30,7 +30,8 @@ Suggests:
     Matrix,
     BiocStyle,
     knitr,
-    rmarkdown
+    rmarkdown,
+    devtools
 Enhances: gurobi
 VignetteBuilder: knitr
 biocViews:

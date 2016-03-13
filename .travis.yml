@@ -1,30 +1,21 @@
-language: c
-sudo: required
+language: r
+sudo: false
+cache: packages
 
-before_install:
-  - curl -OL https://raw.githubusercontent.com/metacran/r-builder/master/pkg-build.sh
-  - chmod 755 pkg-build.sh
-  - ./pkg-build.sh bootstrap
+r:
+  - release
+  - devel
+warnings_are_errors: false
+bioc_required: true
+bioc_use_devel: true
 
-install:
-  - ./pkg-build.sh install_github jimhester/covr
-  - ./pkg-build.sh install_bioc BiocCheck
-  - ./pkg-build.sh install_bioc_deps
+r_github_packages:
+  - jimhester/covr
 
-script:
-  - ./pkg-build.sh run_tests
-
-after_script:
-  - ./pkg-build.sh run_script -e 'covr::codecov()'
-  - ls -lah
-  - FILE=$(ls -1t *.tar.gz | head -n 1)
-  - ./pkg-build.sh run_script -e "library(BiocCheck); BiocCheck(\"${FILE}\")"
-
+after_success:
+  - Rscript -e 'covr::codecov()'
 
 notifications:
   email:
     on_success: change
     on_failure: always
-
-env:
-  - RVERSION=devel
