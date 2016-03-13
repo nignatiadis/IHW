@@ -5,7 +5,7 @@
 #'
 #' @param covariate Numeric vector of ordinal covariates based on which the stratification will be done.
 #' @param nbins Integer, number of groups/strata into which p-values will be split based on covariate.
-#'
+#' @param ties.method Character specifying how ties are treated, see \code{\link{rank}} function.
 #' @return A factor with nbins different levels, each entry corresponds to the stratum the i-th hypothesis
 #'  was assigned to.
 #' @examples
@@ -13,8 +13,8 @@
 #'  groups <- groups_by_filter(covariates,10)
 #'  table(groups)
 #' @export
-groups_by_filter <- function(covariate, nbins){
-	rfs <- rank(covariate, ties.method="first")/length(covariate)
+groups_by_filter <- function(covariate, nbins, ties.method="random"){
+	rfs <- rank(covariate, ties.method=ties.method)/length(covariate)
 	as.factor(ceiling( rfs* nbins))
 }
 

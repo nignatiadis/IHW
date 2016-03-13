@@ -4,12 +4,14 @@
 \alias{groups_by_filter}
 \title{Stratify hypotheses based on increasing value of the covariate}
 \usage{
-groups_by_filter(covariate, nbins)
+groups_by_filter(covariate, nbins, ties.method = "random")
 }
 \arguments{
 \item{covariate}{Numeric vector of ordinal covariates based on which the stratification will be done.}
 
 \item{nbins}{Integer, number of groups/strata into which p-values will be split based on covariate.}
+
+\item{ties.method}{Character specifying how ties are treated, see \code{\link{rank}} function.}
 }
 \value{
 A factor with nbins different levels, each entry corresponds to the stratum the i-th hypothesis
