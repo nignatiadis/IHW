@@ -76,14 +76,7 @@ ihw <- function(pvalues, covariates, alpha,
 	# e.g. takes care of NAs, sorts pvalues and then
 	# returns a nice ihw object
 
-	# start by making sure seed is correctly specified
-	if (!is.null(seed)){
-		#http://stackoverflow.com/questions/14324096/setting-seed-locally-not-globally-in-r?rq=1
-		tmp <- runif(1)
-		old <- .Random.seed
-  		on.exit( { .Random.seed <<- old } )
-  		set.seed(as.integer(seed)) #seed
-	}
+
 
 	if (!adjustment_type %in% c("BH","bonferroni")){
 		stop("IHW currently only works with BH or bonferroni types of multiple testing corrections")
@@ -127,7 +120,7 @@ ihw <- function(pvalues, covariates, alpha,
 		if (nbins == "auto"){
 			nbins <- max(1,min(40, floor(length(pvalues)/1500))) # rule of thumb..
 		}
-		groups <- as.factor(groups_by_filter(covariates, nbins))
+		groups <- as.factor(groups_by_filter(covariates, nbins, seed=seed))
 		penalty <- "total variation"
 
 	} else if (is.factor(covariates)){
@@ -180,7 +173,14 @@ ihw <- function(pvalues, covariates, alpha,
 		message("We recommend that you supply (many) more than 1000 p-values for meaningful data-driven hypothesis weighting results.")
 	}
 
-
+	# start by making sure seed is correctly specified
+	if (!is.null(seed)){
+		#http://stackoverflow.com/questions/14324096/setting-seed-locally-not-globally-in-r?rq=1
+		tmp <- runif(1)
+		old <- .Random.seed
+  		on.exit( { .Random.seed <<- old } )
+  		set.seed(as.integer(seed)) #seed
+	}
 
 	if (nbins == 1){
 		nfolds <- 1L

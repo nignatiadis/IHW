@@ -6,6 +6,7 @@
 #' @param covariate Numeric vector of ordinal covariates based on which the stratification will be done.
 #' @param nbins Integer, number of groups/strata into which p-values will be split based on covariate.
 #' @param ties.method Character specifying how ties are treated, see \code{\link{rank}} function.
+#' @param seed Integer, specifies random seed to be used when ties.method=="random".
 #' @return A factor with nbins different levels, each entry corresponds to the stratum the i-th hypothesis
 #'  was assigned to.
 #' @examples
@@ -13,7 +14,14 @@
 #'  groups <- groups_by_filter(covariates,10)
 #'  table(groups)
 #' @export
-groups_by_filter <- function(covariate, nbins, ties.method="random"){
+groups_by_filter <- function(covariate, nbins, ties.method="random", seed=NULL){
+  if (!is.null(seed) && ties.method=="random"){
+    #http://stackoverflow.com/questions/14324096/setting-seed-locally-not-globally-in-r?rq=1
+    tmp <- runif(1)
+    old <- .Random.seed
+    on.exit( { .Random.seed <<- old } )
+    set.seed(as.integer(seed)) 
+  }
 	rfs <- rank(covariate, ties.method=ties.method)/length(covariate)
 	as.factor(ceiling( rfs* nbins))
 }
