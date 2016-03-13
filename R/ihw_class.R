@@ -6,8 +6,10 @@
 #' @slot nbins  Integer, number of distinct levels into which the hypotheses were stratified
 #' @slot nfolds  Integer, number of folds for pre-validation procedure
 #' @slot regularization_term Numeric vector, the final value of the regularization parameter within each fold
+#' @slot m_groups Integer vector, number of hypotheses tested in each stratum
 #' @slot penalty  Character, "uniform deviation" or "total variation"
 #' @slot covariate_type  Character, "ordinal" or "nominal"
+#' @slot adjustment_type  Character, "BH" or "bonferroni"
 #' @slot reg_path_information  A data.frame, information about the whole regularization path. (Currently not used, thus empty)
 #' @slot solver_information  A list, solver specific output, e.g. were all subproblems solved to optimality? (Currently empty list)
 #'
@@ -34,7 +36,7 @@
 #' rejections(ihw_res)
 #' colnames(as.data.frame(ihw_res))
 #'
-#' @seealso ihw, plot_ihw
+#' @seealso ihw, plot,ihwResult-method
 #' @import methods
 
 ihwResult <- setClass("ihwResult",
@@ -45,8 +47,10 @@ ihwResult <- setClass("ihwResult",
                    nbins = "integer",
                    nfolds = "integer",
                    regularization_term = "numeric",
+                   m_groups = "integer",
                    penalty = "character",
                    covariate_type = "character",
+                   adjustment_type = "character",
                    reg_path_information = "data.frame",
            		     solver_information= "list"))
 
@@ -209,6 +213,15 @@ setGeneric("alpha", function(object) standardGeneric("alpha"))
 setMethod("alpha", signature(object="ihwResult"),
           alpha_ihwResult)
 
+#----------------- adjustment type extraction ----------------------------------------------------------------------#
+adjustment_type_ihwResult <-function(object) object@adjustment_type
+
+setGeneric("adjustment_type", function(object) standardGeneric("adjustment_type"))
+
+setMethod("adjustment_type", signature(object="ihwResult"),
+          adjustment_type_ihwResult)
+
+
 #----------------- rejections ------------------------------------------------------------------------------------#
 
 
@@ -250,6 +263,7 @@ as.data.frame_ihwResult <-function(x,row.names=NULL, optional=FALSE, ...){
       }
 
 #' @describeIn ihwResult Coerce ihwResult to data frame
+#' @importFrom BiocGenerics as.data.frame
 #' @export
 setMethod("as.data.frame", "ihwResult",as.data.frame_ihwResult)
 
@@ -261,8 +275,16 @@ setMethod("nrow", "ihwResult", function(x) nrow(x@df))
 #' @importFrom methods show
 #' @export
 setMethod("show", signature(object="ihwResult"), function(object) {
+  adj_type <- adjustment_type(object)
+  if (adj_type == "BH"){
+    typeI_error <- "FDR"
+  } else if (adj_type == "bonferroni"){
+    typeI_error <- "FWER"
+  } else {
+    stop("Adjustment method appears to be invalid, corrupted IHW object.")
+  }
   cat("ihwResult object with", nrow(object),"hypothesis tests \n")
-  cat("Nominal FDR control level:", alpha(object),"\n")
+  cat("Nominal",  typeI_error, "control level:", alpha(object),"\n")
   cat("Split into", nbins(object),"bins, based on an", covariate_type(object), "covariate\n")
 })
 
