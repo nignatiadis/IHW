@@ -173,9 +173,13 @@ An S4 class to represent the ihw output.
 
 \item{\code{regularization_term}}{Numeric vector, the final value of the regularization parameter within each fold}
 
+\item{\code{m_groups}}{Integer vector, number of hypotheses tested in each stratum}
+
 \item{\code{penalty}}{Character, "uniform deviation" or "total variation"}
 
 \item{\code{covariate_type}}{Character, "ordinal" or "nominal"}
+
+\item{\code{adjustment_type}}{Character, "BH" or "bonferroni"}
 
 \item{\code{reg_path_information}}{A data.frame, information about the whole regularization path. (Currently not used, thus empty)}
 
@@ -196,6 +200,6 @@ colnames(as.data.frame(ihw_res))
 
 }
 \seealso{
-ihw, plot_ihw
+ihw, plot,ihwResult-method
 }
 

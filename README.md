@@ -17,9 +17,9 @@ devtools::install_github("vladchimescu/lpsymphony", subdir="lpsymphony")
 devtools::install_github("nignatiadis/IHW")
 ```
 
-In addition, these packages will be shortly available on BioConductor. [lpsymphony](http://bioconductor.org/packages/3.3/bioc/html/lpsymphony.html) is already available on the development branch of Bioconductor. It can be installed from there as follows:
+In addition, these packages will be available in the next release of Bioconductor. Both [lpsymphony](http://bioconductor.org/packages/3.3/bioc/html/lpsymphony.html) and [IHW](https://www.bioconductor.org/packages/devel/bioc/html/IHW.html) are also already available on the development branch of Bioconductor. Thus IHW can also be installed from there as follows:
 
 ```R
 source("https://bioconductor.org/biocLite.R")
-biocLite("lpsymphony")
+biocLite("IHW")
 ```

@@ -27,7 +27,7 @@ ihw_res2 <- ihw(sim$pvalue, sim$group, .1)
 expect_equal(rejections(ihw_res1), rejections(ihw_res2))
 
 
-plot_ihw(ihw_res2)
+plot(ihw_res2)
 
 
 ihw_res3 <- ihw(sim$pvalue, sim$group, .1, covariate_type="nominal")
@@ -37,7 +37,7 @@ expect_true(all(apply(weights(ihw_res3, levels_only=T),2, IHW:::uniform_deviatio
 # now test small inputs.
 sim <- wasserman_normal_sim(200,0.85, 0, 3, seed=1)
 ihw_res_small <- ihw(sim$pvalue, sim$filterstat, .1)
-plot_ihw(ihw_res_small, scale="nominal")
+plot(ihw_res_small, scale="nominal")
 
 ihw_res_small2 <- ihw(sim$pvalue, sim$filterstat, .05, nbins=2)
 

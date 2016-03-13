@@ -1,8 +1,9 @@
 #' ihw: Main function for Independent Hypothesis Weighting
 #'
 #' Given a vector of p-values, a vector of covariates which are independent of the p-values under the null hypothesis and
-#' a nominal significance level alpha, IHW learns multiple testing weights and then applies the weighted Benjamini Hochberg 
-#' procedure.
+#' a nominal significance level alpha, IHW learns multiple testing weights and then applies the weighted Benjamini Hochberg
+#' (or Bonferroni) procedure.
+#'
 #'
 #' @param pvalues  Numeric vector of unadjusted p-values.
 #' @param covariates  Vector which contains the one-dimensional covariates (independent under the H0 of the p-value)
@@ -11,6 +12,12 @@
 #' @param covariate_type  "ordinal" or "nominal" (i.e. whether covariates can be sorted in increasing order or not)
 #' @param nbins  Integer, number of groups into which p-values will be split based on covariate. Use "auto" for
 #'             automatic selection of the number of bins. Only applicable when covariates is not a factor.
+#' @param m_groups Integer vector of length equal to the number of levels of the covariates (only to be specified
+#'               when the latter is a factor/categorical). Each entry corresponds to the number of hypotheses to be tested in
+#'               each group (stratum). This argument needs to be given when the complete vector of p-values is
+#'               not available, but only p-values below a given threshold, for example because of memory reasons.
+#'               See the vignette for additional details and an example of how this principle can be applied with
+#'               numerical covariates.
 #' @param quiet  Boolean, if False a lot of messages are printed during the fitting stages.
 #' @param nfolds Number of folds into which the p-values will be split for the pre-validation procedure
 #' @param nfolds_internal  Within each fold, a second  (nested) layer of cross-validation can be conducted to choose a good
@@ -25,27 +32,34 @@
 #'              or lp_solver == "lpsymphony" will in general be excessively slow, except for very small problems.
 #' @param lp_solver  Character ("lpsymphony" or "gurobi"). Internally, IHW solves a sequence of linear programs, which
 #'        can be solved with either of these solvers.
+#' @param adjustment_type Character ("BH" or "bonferroni") depending on whether you want to control FDR or FWER.
 #' @param return_internal Returns a lower level representation of the output (only useful for debugging purposes).
 #' @param ... Arguments passed to internal functions.
 #'
 #' @return A ihwResult object.
-#' @seealso ihwResult, plot_ihw
+#' @seealso ihwResult, plot,ihwResult-method
 #'
 #' @examples
 #'
 #' save.seed <- .Random.seed; set.seed(1)
-#' X   <- runif(20000, min=0.5, max=4.5) #covariate
-#' H   <- rbinom(20000,1,0.1)            #hypothesis true or false
-#' Z   <- rnorm(20000, H*X)              #Z-score
+#' X   <- runif(20000, min=0, max=2.5)   # covariate
+#' H   <- rbinom(20000,1,0.1)            # hypothesis true or false
+#' Z   <- rnorm(20000, H*X)              # Z-score
 #' .Random.seed <- save.seed
-#' pvalue <- 1-pnorm(Z)                  #pvalue
-#' ihw_res <- ihw(pvalue, X, .1)
+#' pvalue <- 1-pnorm(Z)                  # pvalue
+#'
+#' ihw_fdr <- ihw(pvalue, X, .1)        # Standard IHW for FDR control
+#' ihw_fwer <- ihw(pvalue, X, .1, adjustment_type = "bonferroni")    # FWER control
+#
+#' table(H[adj_pvalues(ihw_fdr) <= 0.1] == 0) #how many false rejections?
+#' table(H[adj_pvalues(ihw_fwer) <= 0.1] == 0)
 #'
 #'
 #' @export
 ihw <- function(pvalues, covariates, alpha,
 						covariate_type = "ordinal",
 						nbins = "auto",
+						m_groups = NULL,
 						quiet =TRUE ,
 						nfolds = 5L,
 						nfolds_internal = 5L,
@@ -54,12 +68,23 @@ ihw <- function(pvalues, covariates, alpha,
 						seed = 1L,
 						distrib_estimator = "grenander",
 						lp_solver="lpsymphony",
+						adjustment_type = "BH",
 						return_internal=FALSE,
 						...){
 
 	# This function essentially wraps the lower level function ihw_internal
 	# e.g. takes care of NAs, sorts pvalues and then
 	# returns a nice ihw object
+
+
+
+	if (!adjustment_type %in% c("BH","bonferroni")){
+		stop("IHW currently only works with BH or bonferroni types of multiple testing corrections")
+	}
+
+	if (adjustment_type == "bonferroni" & distrib_estimator != "grenander"){
+		stop("For Bonferroni-like FWER adjustment currently only the grenander estimator is supported.")
+	}
 
 	nfolds <- as.integer(nfolds)
 	nfolds_internal <- as.integer(nfolds_internal)
@@ -88,10 +113,14 @@ ihw <- function(pvalues, covariates, alpha,
 
 	if (covariate_type =="ordinal" & is.numeric(covariates)){
 
-		if (nbins == "auto"){
-			nbins <- max(1,min(300, floor(length(pvalues)/1500))) # rule of thumb..
+		if (!is.null(m_groups)){
+			stop("m_groups should only be specified when the covariates are a factor")
 		}
-		groups <- as.factor(groups_by_filter(covariates, nbins))
+
+		if (nbins == "auto"){
+			nbins <- max(1,min(40, floor(length(pvalues)/1500))) # rule of thumb..
+		}
+		groups <- as.factor(groups_by_filter(covariates, nbins, seed=seed))
 		penalty <- "total variation"
 
 	} else if (is.factor(covariates)){
@@ -120,12 +149,9 @@ ihw <- function(pvalues, covariates, alpha,
 	if (nbins < 1) {
 		stop("Cannot have less than one bin.")
 	}
-	# once we have groups, check whether they include enough p-values
-	if (nbins > 1 & any(table(groups) < 1000)){
-		message("In general, data-driven choice of weights requires at least 1000 p-values per stratum.")
-	}
 
-	group_levels <- levels(groups)
+
+	group_levels <- levels(droplevels(groups))
 	# sort pvalues globally
 	order_pvalues <- order(pvalues) #TODO BREAK ties by filter statistic rank
 	reorder_pvalues <- order(order_pvalues)
@@ -133,6 +159,21 @@ ihw <- function(pvalues, covariates, alpha,
 	sorted_groups <- groups[order_pvalues]
 	sorted_pvalues <- pvalues[order_pvalues]
 
+	if (is.null(m_groups)) {
+		m_groups <- table(sorted_groups)
+	} else {
+		# TODO: also check if m_groups entered by user is plausible based on observed m_groups and max p_value
+	}
+
+	if (length(group_levels) != length(m_groups)){
+		stop("Number of unique levels should be equal to length of m_groups.")
+	}
+	# once we have groups, check whether they include enough p-values
+	if (nbins > 1 & any(m_groups < 1000)){
+		message("We recommend that you supply (many) more than 1000 p-values for meaningful data-driven hypothesis weighting results.")
+	}
+
+	# start by making sure seed is correctly specified
 	if (!is.null(seed)){
 		#http://stackoverflow.com/questions/14324096/setting-seed-locally-not-globally-in-r?rq=1
 		tmp <- runif(1)
@@ -146,7 +187,7 @@ ihw <- function(pvalues, covariates, alpha,
 		nfolds_internal <- 1L
 		nsplits_internal <- 1L
 		message("Only 1 bin; IHW reduces to Benjamini Hochberg (uniform weights)")
-		sorted_adj_p <- p.adjust(sorted_pvalues, method="BH")
+		sorted_adj_p <- p.adjust(sorted_pvalues, method=adjustment_type, n=sum(m_groups))
 		rjs <- sum(sorted_adj_p <= alpha)
 		res <- list(lambda=0, fold_lambdas=0, rjs=rjs, sorted_pvalues=sorted_pvalues,
 					sorted_weighted_pvalues = sorted_pvalues,
@@ -156,6 +197,7 @@ ihw <- function(pvalues, covariates, alpha,
 					weight_matrix = matrix(1))
 	} else if (nbins > 1) {
 		res <- ihw_internal(sorted_groups, sorted_pvalues, alpha, lambdas,
+						m_groups,
 						penalty=penalty,
 						quiet=quiet,
 						nfolds=nfolds,
@@ -164,6 +206,7 @@ ihw <- function(pvalues, covariates, alpha,
 						seed=NULL,
 						distrib_estimator = distrib_estimator,
 						lp_solver=lp_solver,
+						adjustment_type=adjustment_type,
 						...)
 	}
 
@@ -196,8 +239,10 @@ ihw <- function(pvalues, covariates, alpha,
 					nbins = as.integer(nbins),
 					nfolds = nfolds,
 					regularization_term = res$fold_lambdas,
+					m_groups = as.integer(m_groups),
 					penalty = penalty,
 					covariate_type = covariate_type,
+					adjustment_type = adjustment_type,
 					reg_path_information = data.frame(),
 		 			solver_information = list())
 
@@ -207,6 +252,7 @@ ihw <- function(pvalues, covariates, alpha,
 
 # operate on pvalues which have already been sorted and without any NAs
 ihw_internal <- function(sorted_groups, sorted_pvalues, alpha, lambdas,
+								m_groups,
 							    penalty="total variation",
 							    seed=NULL,
 								quiet=TRUE,
@@ -215,6 +261,7 @@ ihw_internal <- function(sorted_groups, sorted_pvalues, alpha, lambdas,
 								nsplits_internal = 1L,
 								distrib_estimator = "distrib_estimator",
 								lp_solver="lpsymphony",
+								adjustment_type="BH",
 								debug_flag=FALSE,
 								...){
 
@@ -222,7 +269,7 @@ ihw_internal <- function(sorted_groups, sorted_pvalues, alpha, lambdas,
 
 	m <- length(sorted_pvalues)
 	split_sorted_pvalues <- split(sorted_pvalues, sorted_groups)
-	m_groups <- sapply(split_sorted_pvalues, length)
+	m_groups_available <- sapply(split_sorted_pvalues, length)
 
 
 	#  do the k-fold strategy
@@ -250,10 +297,18 @@ ihw_internal <- function(sorted_groups, sorted_pvalues, alpha, lambdas,
 			filtered_sorted_groups <- sorted_groups
 			filtered_sorted_pvalues <- sorted_pvalues
 			filtered_split_sorted_pvalues <- split(filtered_sorted_pvalues, filtered_sorted_groups)
+
+			m_groups_holdout_fold <- m_groups
+			m_groups_other_folds <- m_groups
 		} else {
 			filtered_sorted_groups <- sorted_groups[sorted_folds!=i]
 			filtered_sorted_pvalues <- sorted_pvalues[sorted_folds!=i]
 			filtered_split_sorted_pvalues <- split(filtered_sorted_pvalues, filtered_sorted_groups)
+
+			# TODO: add check to see if for common use case the first term is 0
+			m_groups_holdout_fold <- (m_groups-m_groups_available)/nfolds +
+						 m_groups_available - sapply(filtered_split_sorted_pvalues, length)
+			m_groups_other_folds <- m_groups - m_groups_holdout_fold
 		}
 		# within each fold do iterations to also find lambda
 
@@ -264,11 +319,13 @@ ihw_internal <- function(sorted_groups, sorted_pvalues, alpha, lambdas,
 				lambda <- lambdas[k]
 				for (l in 1:nsplits_internal){
 
-					rjs[k,l] <- ihw_internal(filtered_sorted_groups, filtered_sorted_pvalues, alpha, lambda,
+					rjs[k,l] <- ihw_internal(filtered_sorted_groups, filtered_sorted_pvalues, alpha, 
+											lambda, m_groups_other_folds,
 									    	seed=NULL, quiet=quiet,
 									    	nfolds=nfolds_internal,
 									    	distrib_estimator = distrib_estimator,
-									    	lp_solver=lp_solver)$rjs
+									    	lp_solver=lp_solver,
+									    	adjustment_type=adjustment_type)$rjs
 				}
 				if (debug_flag==TRUE){
 					rjs_path_mat[i,k] <- rjs[k] #only works for nsplits_internal currently
@@ -283,15 +340,12 @@ ihw_internal <- function(sorted_groups, sorted_pvalues, alpha, lambdas,
 		fold_lambdas[i] <- lambda
 
 		# ok we have finally picked lambda and can proceed
-		if (nfolds==1){
-			m_groups_holdout_fold <- m_groups
-		} else {
-			m_groups_holdout_fold <- m_groups - sapply(filtered_split_sorted_pvalues, length)
-		}
 
 		if (distrib_estimator=="grenander"){
-			res <- ihw_convex(filtered_split_sorted_pvalues, alpha, m_groups_holdout_fold,
-						   penalty=penalty, lambda=lambda, lp_solver=lp_solver, quiet=quiet,...)
+			res <- ihw_convex(filtered_split_sorted_pvalues, alpha,
+						   m_groups_holdout_fold, m_groups_other_folds,
+						   penalty=penalty, lambda=lambda, lp_solver=lp_solver, 
+						   adjustment_type=adjustment_type, quiet=quiet,...)
 		} else if (distrib_estimator == "ECDF"){
 			res <- ihw_milp(filtered_split_sorted_pvalues, alpha, m_groups_holdout_fold,
 				           penalty=penalty, lambda=lambda, lp_solver=lp_solver, ...)
@@ -304,7 +358,7 @@ ihw_internal <- function(sorted_groups, sorted_pvalues, alpha, lambdas,
 	}
 
 	sorted_weighted_pvalues <- mydiv(sorted_pvalues, sorted_weights)
-	sorted_adj_p <- p.adjust(sorted_weighted_pvalues, method = "BH")
+	sorted_adj_p <- p.adjust(sorted_weighted_pvalues, method = adjustment_type, n = sum(m_groups))
 	rjs   <- sum(sorted_adj_p <= alpha)
 	lst <- list(lambda=lambda, fold_lambdas=fold_lambdas, rjs=rjs, sorted_pvalues=sorted_pvalues,
 					sorted_weighted_pvalues = sorted_weighted_pvalues,
@@ -320,8 +374,13 @@ ihw_internal <- function(sorted_groups, sorted_pvalues, alpha, lambdas,
 
 #' @importFrom slam simple_triplet_zero_matrix simple_triplet_matrix
 #' @importFrom lpsymphony lpsymphony_solve_LP
-ihw_convex <- function(split_sorted_pvalues, alpha, m_groups, 
-		penalty="total variation", lambda=Inf, lp_solver="gurobi", quiet=quiet){
+ihw_convex <- function(split_sorted_pvalues, alpha, m_groups, m_groups_grenander,
+		penalty="total variation", lambda=Inf, lp_solver="gurobi",
+		adjustment_type= "BH", quiet=quiet){
+
+	# m_groups used for balancing (weight budget)
+	# m_groups_grenander (used for grenander estimator)
+	# Practically always it will hold: m_groups \approx m_groups_grenander
 
 	nbins <- length(split_sorted_pvalues)
 
@@ -344,12 +403,16 @@ ihw_convex <- function(split_sorted_pvalues, alpha, m_groups,
 
 	#lapply grenander...
 	if (!quiet) message("Applying Grenander estimator within each bin.")
-	grenander_list <- lapply(split_sorted_pvalues, presorted_grenander, quiet=quiet)
+	grenander_list <- mapply(presorted_grenander,
+		                    split_sorted_pvalues,
+		                    m_groups_grenander,
+		                    quiet=quiet,
+		                    SIMPLIFY=FALSE)
 
 
 	#set up LP
 	nconstraints_per_bin <- sapply(grenander_list, function(x) x$length)
-	nconstraints <- sum(nconstraints_per_bin) 
+	nconstraints <- sum(nconstraints_per_bin)
 	i_yi <- 1:nconstraints
 	j_yi <- rep(1:nbins,  times=nconstraints_per_bin)
 	v_yi <- rep(1,  nconstraints)
@@ -419,11 +482,24 @@ ihw_convex <- function(split_sorted_pvalues, alpha, m_groups,
 		}
 	}
 
-	# incorporate the FDR constraint
-	fdr_constr<- matrix(c(rep(-alpha,nbins)*m_groups, rep(1,nbins)*m_groups, rep(0,ncol(constr_matrix)-2*nbins)), nrow=1)
-	constr_matrix <- rbind(constr_matrix, fdr_constr)
+	if (adjustment_type == "BH"){
+		# incorporate the FDR constraint
+		fdr_constr<- matrix(c(rep(-alpha,nbins)*m_groups,
+						      rep(1,nbins)*m_groups,
+						      rep(0,ncol(constr_matrix)-2*nbins)), nrow=1)
+		constr_matrix <- rbind(constr_matrix, fdr_constr)
+		rhs <- c(rhs,0)
+	} else if (adjustment_type == "bonferroni"){
+		# incorporate the FWER constraint
+		fwer_constr<- matrix(c(rep(0,nbins),
+						      rep(1,nbins)*m_groups,
+						      rep(0,ncol(constr_matrix)-2*nbins)), nrow=1)
+		constr_matrix <- rbind(constr_matrix, fwer_constr)
+		rhs <- c(rhs,alpha)
+	} else {
+		stop("Only BH-like and bonferroni-like adjustments available.")
+	}
 	nvars <- ncol(constr_matrix)
-	rhs <- c(rhs,0)
 
 	if (!quiet) message("Starting to solve LP.")
 
@@ -478,16 +554,24 @@ ihw_convex <- function(split_sorted_pvalues, alpha, m_groups,
 
 
 #' @importFrom fdrtool gcmlcm
-presorted_grenander <- function(sorted_pvalues, quiet=TRUE){
-  	n  <- length(sorted_pvalues)
+presorted_grenander <- function(sorted_pvalues, m_total=length(sorted_pvalues),
+							quiet=TRUE){
+
   	unique_pvalues <- unique(sorted_pvalues)
-  	ecdf_values <- cumsum(tabulate(match(sorted_pvalues, unique_pvalues)))/n
+  	ecdf_values <- cumsum(tabulate(match(sorted_pvalues, unique_pvalues)))/m_total
+
   	if (min(unique_pvalues) > 0){
   		# I think fdrtool neglects this borderline case and this causes returned object
   		# to be discontinuous hence also not concave
   		unique_pvalues <- c(0,unique_pvalues)
   		ecdf_values   <- c(0, ecdf_values)
   	}
+
+  	if (max(unique_pvalues) < 1){
+  		unique_pvalues <- c(unique_pvalues,1)
+  		ecdf_values    <- c(ecdf_values,1)
+  	}
+
   	ll <- fdrtool::gcmlcm(unique_pvalues, ecdf_values, type="lcm")
 	ll$length <- length(ll$slope.knots)
 	ll$x.knots <- ll$x.knots[-ll$length]
@@ -502,7 +586,7 @@ presorted_grenander <- function(sorted_pvalues, quiet=TRUE){
 # to demonstrate that "naive IHW" algorithm does not control type-I error
 
 ihw_milp <- function(split_sorted_pvalues, alpha, m_groups, lambda=Inf, lp_solver="gurobi", 
-		quiet=quiet, 
+		quiet=quiet,
 		optim_pval_threshold=1,
 		penalty="total variation",
 		lp_relaxation=FALSE,
