@@ -11,7 +11,7 @@ vignette: >
   %\usepackage[utf8]{inputenc}
 ---
 
-```{r options}
+```{r options, echo = FALSE}
 knitr::opts_chunk$set(cache = TRUE, autodep = TRUE, digits = 3)
 ```
 
@@ -106,7 +106,7 @@ weights(ihw_res, levels_only=TRUE)
 
 Finally, IHW contains a convenience function to visualize the estimated weights:
 
-```{r}
+```{r plot_ihw_res, fig.width = 5, fig.height = 3}
 plot(ihw_res)
 ```
 
@@ -160,7 +160,7 @@ Below we describe a few useful diagnostics to check whether the criteria for the
 
 To check whether the covariate is informative about power under the alternative (property 1), one should plot the p-values (or usually better, $-log_{10}(\text{p-value})$) against the ranks of the covariate:
 
-```{r}
+```{r rkpvslogp, fig.width = 6, fig.height = 3}
 de_res <- na.omit(as.data.frame(de_res))
 de_res$geneid <- as.numeric(as.numeric(gsub("ENSG[+]*", "", rownames(de_res))))
 
@@ -171,7 +171,8 @@ df <- rbind(data.frame(pvalue = de_res$pvalue, covariate = rank(de_res$baseMean)
                        covariate_type="gene id"))
 
 ggplot(df, aes(x=covariate, y = -log10(pvalue))) +
-                         geom_point(alpha=0.3) + 
+#                         geom_point(alpha=0.3) + 
+                         geom_hex(bins = 100) + 
                          facet_grid( . ~ covariate_type)
 ```
 
@@ -183,7 +184,7 @@ On the other hand, the right plot uses a less useful statistic; the gene identif
 
 One of the most useful diagnostic plots, before applying any multiple testing procedure, is to inspect the p-calue histogram. We first do this for our DESeq2 p-values:
 
-```{r pvalhistogram}
+```{r pvalhistogram, fig.width = 3, fig.height = 3}
 ggplot(de_res, aes(x=pvalue)) + geom_histogram(binwidth=0.025, boundary = 0)
 ```
 
@@ -193,27 +194,34 @@ Now, when applying IHW with covariates, it is instrumental to not only check the
 
 Here we split the hypotheses by the base mean of normalized counts into a few strata and then visualize the conditional histograms:
 
-```{r}
+```{r goodhist, fig.width = 8, fig.height = 5}
 de_res$baseMean_group <- groups_by_filter(de_res$baseMean,8)
 
 ggplot(de_res, aes(x=pvalue)) + 
-  geom_histogram(binwidth=0.025, boundary = 0) +
+  geom_histogram(binwidth = 0.025, boundary = 0) +
   facet_wrap( ~ baseMean_group, nrow=2)
 ```
 
 Notice that all of these histograms are well calibrated, since all of them show a uniform distribution at large p-values. In almost all realistic examples, if this is the case, then IHW will control the FDR. Thus, this is a good check of whether properties 2 and 3 hold. In addition, these conditional histograms also illustrate whether property 1 holds: Notice that as we move to strata corresponding to higher mean counts, the peak close to 0 becomes taller and the height of the uniform tail becomes lower. This means that the covariate is associated with power under the alternative.
 
-Finally, as an example of an invalid covariate, we use the estimated log fold change. Of course, this is not independent of the p-values under the null hypothesis. We confirm this by plotting conditional histograms, which are not well calibrated:
+The empirical cumulative distribution functions (ECDF) offer a variation of this visualisation.
 
-```{r badhist}
-de_res$lfc_group <- groups_by_filter(abs(de_res$log2FoldChange),8)
-
-ggplot(de_res, aes(x=pvalue)) + 
-  geom_histogram(binwidth=0.025, boundary = 0) +
-  facet_wrap(~lfc_group, nrow=2)
+```{r goodecdf, fig.width = 5, fig.height = 3}
+ggplot(de_res, aes(x = pvalue, col = baseMean_group)) + stat_ecdf(geom = "step") 
 ```
 
+Finally, as an example of an invalid covariate, we use the estimated log fold change. Of course, this is not independent of the p-values under the null hypothesis. We confirm this by plotting conditional histograms / ECDFs, which are not well calibrated:
 
+```{r badhist, fig.width = 8, fig.height = 5}
+de_res$lfc_group <- groups_by_filter(abs(de_res$log2FoldChange),8)
+
+ggplot(de_res, aes(x = pvalue)) + 
+  geom_histogram(binwidth = 0.025, boundary = 0) +
+  facet_wrap( ~ lfc_group, nrow=2)
+```
+```{r badecdf, fig.width = 5, fig.height = 3}
+ggplot(de_res, aes(x = pvalue, col = lfc_group)) + stat_ecdf(geom = "step") 
+```
 
 ## Further reading about appropriate covariates
 For more details regarding choice and diagnostics of covariates, please also consult the Independent Filtering paper  [@bourgon2010independent], as well as the `r Biocpkg("genefilter")` vignettes.
