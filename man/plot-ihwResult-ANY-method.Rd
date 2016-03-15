@@ -3,6 +3,7 @@
 \docType{methods}
 \name{plot,ihwResult,ANY-method}
 \alias{plot,ihwResult,ANY-method}
+\alias{plot,ihwResult-method}
 \title{Convenience function to plot weights learned by ihw method}
 \usage{
 \S4method{plot}{ihwResult,ANY}(x, x_axis = "group",

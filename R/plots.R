@@ -21,6 +21,7 @@
 #'    plot(ihw_res)
 #'
 #' @export
+#' @aliases plot,ihwResult-method
 setMethod("plot", signature="ihwResult",
 	function(x, x_axis="group", scale=covariate_type(x)){
 		if (requireNamespace("ggplot2", quietly=TRUE) & (requireNamespace("scales", quietly=TRUE))){
