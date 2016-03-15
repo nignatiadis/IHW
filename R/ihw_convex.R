@@ -1,3 +1,12 @@
+#' @export
+ihw <- function(...)
+{
+    UseMethod( "ihw" )
+}
+
+
+
+
 #' ihw: Main function for Independent Hypothesis Weighting
 #'
 #' Given a vector of p-values, a vector of covariates which are independent of the p-values under the null hypothesis and
@@ -56,7 +65,10 @@
 #'
 #'
 #' @export
-ihw <- function(pvalues, covariates, alpha,
+#' @aliases ihw
+#'
+
+ihw.default <- function(pvalues, covariates, alpha,
 						covariate_type = "ordinal",
 						nbins = "auto",
 						m_groups = NULL,
@@ -371,6 +383,23 @@ ihw_internal <- function(sorted_groups, sorted_pvalues, alpha, lambdas,
 	}
 	lst
 }
+
+
+#' @rdname ihw.default
+#' @param formula \code{\link{formula}}, specified in the form pvalue~covariate (only 1D covariate supported)
+#' @param data data.frame from which the variables in formula should be taken
+#' @export
+ihw.formula <- function(formula, data=parent.frame(), ...){
+	if (length(formula) != 3){
+		stop("expecting formula of the form pvalue~covariate")
+	}
+	pv_name <- formula[[2]]
+	cov_name <- formula[[3]]
+	pvalues <- eval(pv_name, data, parent.frame())
+	covariates <- eval(cov_name, data, parent.frame())
+	ihw(pvalues, covariates, ...)
+}
+
 
 #' @importFrom slam simple_triplet_zero_matrix simple_triplet_matrix
 #' @importFrom lpsymphony lpsymphony_solve_LP

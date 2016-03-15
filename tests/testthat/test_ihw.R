@@ -14,6 +14,15 @@ ihw_res1 <- ihw(sim$pvalue, sim$filterstat, .1, nbins=10)
 
 expect_true(all(apply(weights(ihw_res1, levels_only=T),2, IHW:::total_variation) <= ihw_res1@regularization_term + 10^(-12)))
 
+
+# now test the formula interface
+ihw_res1_formula1 <- ihw(pvalue~filterstat, data=sim, alpha=.1, nbins=10)
+ihw_res1_formula2 <- ihw(sim$pvalue~sim$filterstat, alpha=.1, nbins=10)
+
+expect_equal(rejections(ihw_res1), rejections(ihw_res1_formula1))
+expect_equal(rejections(ihw_res1), rejections(ihw_res1_formula2))
+
+
 # try same simulation with other value of alpha
 ihw_res1_lower_alpha <- ihw(sim$pvalue, sim$filterstat, .01, nbins=10)
 testthat::expect_less_than( rejections(ihw_res1_lower_alpha), rejections(ihw_res1))
