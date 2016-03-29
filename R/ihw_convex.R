@@ -46,7 +46,7 @@ ihw <- function(...)
 #' @param ... Arguments passed to internal functions.
 #'
 #' @return A ihwResult object.
-#' @seealso ihwResult, plot,ihwResult-method
+#' @seealso ihwResult, plot,ihwResult-method, ihw.DESeqResults
 #'
 #' @examples
 #'
@@ -400,6 +400,62 @@ ihw.formula <- function(formula, data=parent.frame(), ...){
 	ihw(pvalues, covariates, ...)
 }
 
+
+#' ihw.DESeqResults: IHW method dispatching on DESeqResults objects
+#'
+#' @param deseq_res "DESeqResults" object
+#' @param filter Vector of length equal to number of rows of deseq_res object. This is used
+#'         for the covariates in the call to ihw. Can also be a character,
+#'         in which case deseq_res[[filter]] is used as the covariate
+#' @param alpha   Numeric, sets the nominal level for FDR control.
+#' @param adjustment_type Character ("BH" or "bonferroni") depending on whether you want to control FDR or FWER.
+#' @param ... Other optional keyword arguments passed to ihw.
+#'
+#' @return A "DESeqResults" object, which includes weights and adjusted p-values returned
+#'         	by IHW. In addition, includes a metadata slot with an "ihwResult" object.
+#' @seealso ihw, ihwResult
+#'
+#' @examples \dontrun{
+#'    library("DESeq2")
+#'    library("airway")
+#'    data("airway")
+#'    dds <- DESeqDataSet(se = airway, design = ~ cell + dex)
+#'    dds <- DESeq(dds)
+#'    deseq_res <- results(dds)
+#'    deseq_res <- ihw(deseq_res, alpha=0.1)
+#'    #equivalent: deseq_res2 <- results(dds, filterFun = ihw)
+#' }
+#'
+#' @export
+#'
+ihw.DESeqResults <- function(deseq_res, filter="baseMean",
+								alpha=0.1, adjustment_type="BH",...){
+
+    if (missing(filter)) {
+    	filter <- deseq_res$baseMean
+  	} else if (is.character(filter)){
+  		stopifnot(filter %in% colnames(deseq_res))
+  		filter <- deseq_res[[filter]]
+  	}
+
+  	stopifnot(length(filter) == nrow(deseq_res))
+
+	ihw_res <- ihw(deseq_res$pvalue, filter, alpha=alpha,
+							adjustment_type=adjustment_type,...)
+
+	deseq_res$padj <- adj_pvalues(ihw_res)
+ 	deseq_res$weight <- weights(ihw_res)
+
+	mcols(deseq_res)$type[names(deseq_res)=="padj"] <- "results"
+	mcols(deseq_res)$description[names(deseq_res)=="padj"] <- paste("Weighted", adjustment_type,"adjusted p-values")
+
+	mcols(deseq_res)$type[names(deseq_res)=="weight"] <- "results"
+	mcols(deseq_res)$description[names(deseq_res)=="weight"] <- "IHW weights"
+
+	metadata(deseq_res)[["alpha"]] <- alpha
+	metadata(deseq_res)[["ihwResult"]] <- ihw_res
+ 	deseq_res
+}
 
 #' @importFrom slam simple_triplet_zero_matrix simple_triplet_matrix
 #' @importFrom lpsymphony lpsymphony_solve_LP
