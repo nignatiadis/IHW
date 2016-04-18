@@ -590,9 +590,9 @@ ihw_convex <- function(split_sorted_pvalues, alpha, m_groups, m_groups_grenander
 
 	if (lp_solver == "gurobi"){
 
-		if (!require("gurobi", quietly=TRUE)){
-			stop("Gurobi solver appears not be installed. Please use lpsymphony or install gurobi.")
-		}
+		#if (!require("gurobi", quietly=TRUE)){
+		#	stop("Gurobi solver appears not be installed. Please use lpsymphony or install gurobi.")
+		#}
 
 		if (!requireNamespace("Matrix", quietly=TRUE)){
 			stop("Matrix package required to use gurobi in IHW.")
@@ -932,9 +932,9 @@ ihw_milp <- function(split_sorted_pvalues, alpha, m_groups, lambda=Inf, lp_solve
 	} else if (lp_solver=="gurobi"){
 
 
-		if (!require("gurobi", quietly=TRUE)){
-			stop("Gurobi solver appears not be installed. Please use lpsymphony or install gurobi.")
-		}
+		#if (!require("gurobi", quietly=TRUE)){
+		#	stop("Gurobi solver appears not be installed. Please use lpsymphony or install gurobi.")
+		#}
 
 		if (!requireNamespace("Matrix", quietly=TRUE)){
 			stop("Matrix package required to use gurobi in IHW.")
