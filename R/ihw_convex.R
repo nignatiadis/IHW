@@ -590,7 +590,7 @@ ihw_convex <- function(split_sorted_pvalues, alpha, m_groups, m_groups_grenander
 
 	if (lp_solver == "gurobi"){
 
-		if (!requireNamespace("gurobi", quietly=TRUE)){
+		if (!require("gurobi", quietly=TRUE)){
 			stop("Gurobi solver appears not be installed. Please use lpsymphony or install gurobi.")
 		}
 
@@ -609,7 +609,7 @@ ihw_convex <- function(split_sorted_pvalues, alpha, m_groups, m_groups_grenander
 		model$sense      <- '<'
 
 		params <- list(OutputFlag=1)
-		res <- gurobi::gurobi(model, params)
+		res <- gurobi(model, params)
 		sol <- res$x
 		solver_status <- res$status
 
@@ -932,7 +932,7 @@ ihw_milp <- function(split_sorted_pvalues, alpha, m_groups, lambda=Inf, lp_solve
 	} else if (lp_solver=="gurobi"){
 
 
-		if (!requireNamespace("gurobi", quietly=TRUE)){
+		if (!require("gurobi", quietly=TRUE)){
 			stop("Gurobi solver appears not be installed. Please use lpsymphony or install gurobi.")
 		}
 
@@ -971,7 +971,7 @@ ihw_milp <- function(split_sorted_pvalues, alpha, m_groups, lambda=Inf, lp_solve
 		if (is.finite(solution_limit)) params$SolutionLimit <- solution_limit
 		if (is.finite(mip_gap_abs)) params$MIPGapAbs <- mip_gap_abs
 
-		res <- gurobi::gurobi(model, params)
+		res <- gurobi(model, params)
 		sol <- res$x
 		solver_status <- res$status
 
