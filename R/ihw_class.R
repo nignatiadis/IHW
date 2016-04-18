@@ -93,7 +93,8 @@ setMethod("weights", signature(object="ihwResult"),
 
 
 thresholds_ihwResult <-function(object, levels_only = FALSE){
-  t <- get_bh_threshold(na.exclude(weighted_pvalues(object)), alpha(object))
+  t <- get_bh_threshold(na.exclude(weighted_pvalues(object)), alpha(object),
+                        mtests = sum(m_groups(object)))
   t*weights(object, levels_only = levels_only)
 }
 
@@ -253,7 +254,27 @@ setMethod("rejected_hypotheses", signature(object="ihwResult"),
           rejected_hypotheses_ihwResult)
 
 
+#---------------- regularization terms ---------------------------
+regularization_term_ihwResult <-function(object) object@regularization_term
 
+#' @rdname ihwResult-class
+setGeneric("regularization_term", function(object) standardGeneric("regularization_term"))
+
+#' @describeIn ihwResult Extract vector of regularization parameters used for each stratum
+#' @export
+setMethod("regularization_term", signature(object="ihwResult"),
+          regularization_term_ihwResult)
+
+#---------------- m_groups --------------------------------------------------
+m_groups_ihwResult <-function(object) object@m_groups
+
+#' @rdname ihwResult-class
+setGeneric("m_groups", function(object) standardGeneric("m_groups"))
+
+#' @describeIn ihwResult Extract total number of hypotheses within each stratum
+#' @export
+setMethod("m_groups", signature(object="ihwResult"),
+          m_groups_ihwResult)
 
 #--------------- convenience methods ------------------------------------------------------------------------------#
 
