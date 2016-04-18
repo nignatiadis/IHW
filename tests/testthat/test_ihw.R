@@ -112,3 +112,20 @@ ihw_naive <- ihw(sim$pvalue, sim$filterstat, .1, nfolds=1L, nbins=3L, lambdas=In
 # also opportunity to test get_bh_threshold
 expect_less_than( sum(sim$pvalue <= get_bh_threshold(sim$pvalue, .1)), rejections(ihw_naive))
 
+
+
+
+#--------- Filtered method ------------------------------------------#
+#-- Test if IHW with input of only p-values <= threshold , still works
+#--------------------------------------------------------------------#
+
+mgroups <- table(sim$group)
+sim_filt <- subset(sim, sim$pvalue <= 0.5)
+ihw_res1_filtered_single_fold <- ihw(sim_filt$pvalue, sim_filt$group, 
+                                        .1, nfolds=1, m_groups=mgroups)
+
+expect_equal(rejections(ihw_res1_single_fold), rejections(ihw_res1_filtered_single_fold))
+
+t1 <- thresholds(ihw_res1_filtered_single_fold, levels_only=T)
+t2 <- thresholds(ihw_res1_single_fold, levels_only=T)
+expect_equal(t1,t2)

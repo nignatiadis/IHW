@@ -16,6 +16,8 @@
 \alias{groups_factor,ihwResult-method}
 \alias{ihwResult}
 \alias{ihwResult-class}
+\alias{m_groups}
+\alias{m_groups,ihwResult-method}
 \alias{nbins}
 \alias{nbins,ihwResult-method}
 \alias{nfolds}
@@ -23,6 +25,8 @@
 \alias{nrow,ihwResult-method}
 \alias{pvalues}
 \alias{pvalues,ihwResult-method}
+\alias{regularization_term}
+\alias{regularization_term,ihwResult-method}
 \alias{rejected_hypotheses}
 \alias{rejected_hypotheses,ihwResult-method}
 \alias{rejections}
@@ -84,6 +88,14 @@ rejections(object, ...)
 rejected_hypotheses(object, ...)
 
 \S4method{rejected_hypotheses}{ihwResult}(object)
+
+regularization_term(object)
+
+\S4method{regularization_term}{ihwResult}(object)
+
+m_groups(object)
+
+\S4method{m_groups}{ihwResult}(object)
 
 as.data.frame_ihwResult(x, row.names = NULL, optional = FALSE, ...)
 
@@ -151,6 +163,10 @@ An S4 class to represent the ihw output.
 \item \code{rejections}: Total number of rejected hypotheses by ihw procedure
 
 \item \code{rejected_hypotheses}: Get a boolean vector of the rejected hypotheses
+
+\item \code{regularization_term}: Extract vector of regularization parameters used for each stratum
+
+\item \code{m_groups}: Extract total number of hypotheses within each stratum
 
 \item \code{as.data.frame}: Coerce ihwResult to data frame
 
