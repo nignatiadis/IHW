@@ -38,3 +38,5 @@ biocViews:
     MultipleComparison,
     RNASeq
 RoxygenNote: 5.0.1
+URL: https://github.com/nignatiadis/IHW
+BugReports: https://github.com/nignatiadis/IHW/issues
