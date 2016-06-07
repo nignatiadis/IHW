@@ -4,7 +4,10 @@
 # Independent Hypothesis Weighting
 An R package which implements the method described in:
 
-[Data-driven hypothesis weighting increases detection power in big data analytics](http://biorxiv.org/content/early/2015/12/13/034330)
+[Data-driven hypothesis weighting increases detection power in genome-scale multiple testing](http://www.nature.com/nmeth/journal/vaop/ncurrent/full/nmeth.3885.html)
+
+You can also find our preprint under:
+[Data-driven hypothesis weighting increases detection power in multiple testing](http://biorxiv.org/content/early/2016/03/30/034330)
 
 
 
@@ -17,7 +20,7 @@ devtools::install_github("vladchimescu/lpsymphony", subdir="lpsymphony")
 devtools::install_github("nignatiadis/IHW")
 ```
 
-In addition, these packages will be available in the next release of Bioconductor. Both [lpsymphony](http://bioconductor.org/packages/3.3/bioc/html/lpsymphony.html) and [IHW](https://www.bioconductor.org/packages/devel/bioc/html/IHW.html) are also already available on the development branch of Bioconductor. Thus IHW can also be installed from there as follows:
+In addition, the package is available in the current release of Bioconductor ([IHW](http://www.bioconductor.org/packages/IHW)). Thus IHW can also be installed from there as follows:
 
 ```R
 source("https://bioconductor.org/biocLite.R")

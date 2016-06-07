@@ -1,14 +1,14 @@
 citEntry(entry="article",
-         title = "Data-driven hypothesis weighting increases detection power in big data analytics",
+         title = "Data-driven hypothesis weighting increases detection power in genome-scale multiple testing",
          author = personList( as.person("Nikolaos Ignatiadis"),
                               as.person("Bernd Klaus"),
-                              as.person("Judith Zaugg"),
+                              as.person("Judith B. Zaugg"),
                               as.person("Wolfgang Huber")),
-         year = 2015,
-         journal = "bioRxiv",
-         doi = "10.1101/034330",
-         url = "http://dx.doi.org/10.1101/034330",
+         year = 2016,
+         journal = "Nature methods",
+         doi = "10.1038/nmeth.3885",
+         url = "http://dx.doi.org/10.1038/nmeth.3885",
          textVersion =
-         paste("Nikolaos Ignatiadis, Bernd Klaus, Judith Zaugg and Wolfgang Huber (2015):",
-               "Data-driven hypothesis weighting increases detection power in big data analytics",
-               "bioRxiv preprint" ) )
+         paste("Nikolaos Ignatiadis, Bernd Klaus, Judith B. Zaugg and Wolfgang Huber (2016):",
+               "Data-driven hypothesis weighting increases detection power in genome-scale multiple testing",
+               "Nature methods" ) )
