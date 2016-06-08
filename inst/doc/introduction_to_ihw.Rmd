@@ -17,7 +17,7 @@ vignette: >
 
 You will probably be familiar with multiple testing procedures that take a set of p-values and then calculate adjusted p-values. Given a significance level $\alpha$, one can then declare the rejected hypotheses. In R this is most commonly done with the `p.adjust` function in the `r CRANpkg("stats")` package.
 
-Similarly, IHW (Independent Hypothesis Weighting) is a multiple testing procedure, but in addition to the p-values it allows you to specify a covariate for each test. The covariate should be informative of the power or prior probability of each individual test, but is chosen such that the p-values for those hypotheses that are truly null do not depend on the covariate [@ignatiadis2015data]. Therefore the input of IHW is the following:
+Similarly, IHW (Independent Hypothesis Weighting) is a multiple testing procedure, but in addition to the p-values it allows you to specify a covariate for each test. The covariate should be informative of the power or prior probability of each individual test, but is chosen such that the p-values for those hypotheses that are truly null do not depend on the covariate [@ignatiadis2016ihw]. Therefore the input of IHW is the following:
 
 * a vector of p-values (of length $m$),
 * a matching vector of covariates, 
