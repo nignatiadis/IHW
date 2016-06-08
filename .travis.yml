@@ -3,10 +3,9 @@ sudo: false
 cache: packages
 
 r:
-  - release
-  - devel
+  - bioc-devel
+  - bioc-release
 warnings_are_errors: true
-bioc_required: true
 
 r_github_packages:
   - jimhester/covr
