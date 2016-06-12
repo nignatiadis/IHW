@@ -3,31 +3,34 @@
 \docType{methods}
 \name{plot,ihwResult-method}
 \alias{plot,ihwResult-method}
-\title{Convenience function to plot weights learned by ihw method}
+\title{Plot functions for IHW}
 \usage{
-\S4method{plot}{ihwResult}(x, x_axis = "group", scale = covariate_type(x))
+\S4method{plot}{ihwResult}(x, x_axis = c(weights = "group", decisionboundary =
+  "covariate")[what], what = "weights", scale = covariate_type(x))
 }
 \arguments{
-\item{x}{ihwResult Object}
+\item{x}{Object of class \code{ihwResult}}
 
-\item{x_axis}{Character, currently only "group" supported.}
+\item{x_axis}{\code{Character}: "group" or "covariate". Default is "group" if "what" is "weights", and "covariate" if "what" is "decisionboundary".}
 
-\item{scale}{Character, "ordinal" or "nominal"}
+\item{what}{\code{Character}: "weights" or "decisionboundary"}
+
+\item{scale}{\code{Character}: "ordinal" or "nominal"}
 }
 \value{
-A ggplot2 object.
+A \code{ggplot2} object.
 }
 \description{
-Convenience function to plot weights learned by ihw method
+See the vignette for usage examples.
 }
 \examples{
 
    save.seed <- .Random.seed; set.seed(1)
-   X   <- runif(20000, min=0.5, max=4.5) #covariate
-   H   <- rbinom(20000,1,0.1)            #hypothesis true or false
-   Z   <- rnorm(20000, H*X)              #Z-score
+   X   <- runif(20000, min = 0.5, max = 4.5) # covariate
+   H   <- rbinom(20000, 1, 0.1)              # hypothesis true or false
+   Z   <- rnorm(20000, H*X)                  # z-score
    .Random.seed <- save.seed
-   pvalue <- 1-pnorm(Z)                  #pvalue
+   pvalue <- 1-pnorm(Z)                      #pvalue
    ihw_res <- ihw(pvalue, X, .1)
    plot(ihw_res)
 
