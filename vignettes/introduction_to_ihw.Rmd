@@ -131,7 +131,7 @@ ggplot(subset(as.data.frame(ihw_res), adj_pvalue <= 0.2), aes(x = pvalue, y = ad
   geom_point(size = 0.2)
 ```
  
-As you can see above, the `r class(ihw_res)` object `ihw_res` can be converted to a `data.frame` that contains the following columns:
+As you can see above, the `r class(ihw_res)` object `ihw_res` can be converted to a `data.frame`, which contains the following columns:
 
 ```{r}
 ihw_res_df <- as.data.frame(ihw_res)
