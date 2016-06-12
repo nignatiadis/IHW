@@ -126,9 +126,12 @@ plot(ihw_res, what = "decisionboundary")
 ### Diagnostic plot: raw versus adjusted p-values
 
 ```{r plot_ihw_res_rawvsadj, fig.width = 6, fig.height = 3.6, warning = FALSE, dev = c("png", "pdf")}
-ggplot(as.data.frame(ihw_res), aes(x = pvalue, y = adj_pvalue, col = group)) + geom_point(size = 0.2)
-ggplot(subset(as.data.frame(ihw_res), adj_pvalue <= 0.2), aes(x = pvalue, y = adj_pvalue, col = group)) + 
-  geom_point(size = 0.2)
+gg <- ggplot(as.data.frame(ihw_res), aes(x = pvalue, y = adj_pvalue, col = group)) + 
+  geom_point(size = 0.25) + 
+  scale_colour_hue(l = 70, c = 150, drop = FALSE)
+
+gg
+gg %+% subset(as.data.frame(ihw_res), adj_pvalue <= 0.2)
 ```
  
 As you can see above, the `r class(ihw_res)` object `ihw_res` can be converted to a `data.frame`, which contains the following columns:
