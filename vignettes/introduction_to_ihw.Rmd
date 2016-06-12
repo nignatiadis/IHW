@@ -110,15 +110,28 @@ We can also see this internal representation of the weights as a ($n$ X $k$) mat
 weights(ihw_res, levels_only = TRUE)
 ```
 
-Finally, IHW contains a convenience function to visualize the estimated weights:
+### Diagnostic plot: estimated weights
 
-```{r plot_ihw_res, fig.width = 6, fig.height = 3.6}
+```{r plot_ihw_res_weights, fig.width = 6, fig.height = 3.6, dev = c("png", "pdf")}
 plot(ihw_res)
 ```
 
-For each hypothesis, one can visually determine its weight by identifying its stratum and the fold it was assigned to. In the example above, we see that the general trend is driven by the covariate (stratum) and not as much by the fold. Recall that IHW assumes that the "optimal" weights should be a function of the covariate (and hence the stratum) only. Therefore, the weight functions calculated on random (overlapping) splits of the data should behave similarly, while there should be no trend driven by the folds. Also as expected, genes with very low `baseMean` count get assigned a weight of 0, while genes with high baseMean count get prioritized.
+We see that the general trend is driven by the covariate (stratum) and not as much by the fold. Recall that IHW assumes that the "optimal" weights should be a function of the covariate (and hence the stratum) only. Therefore, the weight functions calculated on random (overlapping) splits of the data should behave similarly, while there should be no trend driven by the folds. Also as expected, genes with very low `baseMean` count get assigned a weight of 0, while genes with high baseMean count get prioritized.
 
-As a further convenience for further work, a `r class(ihw_res)` object can be converted to a data.frame as follows:
+### Diagnostic plot: decision boundary
+```{r plot_ihw_res_decisionboundary, fig.width = 6, fig.height = 3.6, dev = c("png", "pdf")}
+plot(ihw_res, what = "decisionboundary") 
+```
+
+### Diagnostic plot: raw versus adjusted p-values
+
+```{r plot_ihw_res_rawvsadj, fig.width = 6, fig.height = 3.6, warning = FALSE, dev = c("png", "pdf")}
+ggplot(as.data.frame(ihw_res), aes(x = pvalue, y = adj_pvalue, col = group)) + geom_point(size = 0.2)
+ggplot(subset(as.data.frame(ihw_res), adj_pvalue <= 0.2), aes(x = pvalue, y = adj_pvalue, col = group)) + 
+  geom_point(size = 0.2)
+```
+ 
+As you can see above, the `r class(ihw_res)` object `ihw_res` can be converted to a `data.frame` that contains the following columns:
 
 ```{r}
 ihw_res_df <- as.data.frame(ihw_res)
