@@ -12,3 +12,4 @@ citEntry(entry="article",
          paste("Nikolaos Ignatiadis, Bernd Klaus, Judith B. Zaugg and Wolfgang Huber (2016):",
                "Data-driven hypothesis weighting increases detection power in genome-scale multiple testing",
                "Nature methods" ) )
+

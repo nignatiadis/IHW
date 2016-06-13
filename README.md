@@ -10,7 +10,6 @@ You can also find our preprint under:
 [Data-driven hypothesis weighting increases detection power in multiple testing](http://biorxiv.org/content/early/2016/03/30/034330)
 
 
-
 # Software availability
 
 The package can be installed as follows with `devtools` from the Github repositories:
@@ -21,6 +20,7 @@ devtools::install_github("nignatiadis/IHW")
 ```
 
 In addition, the package is available in the current release of Bioconductor ([IHW](http://www.bioconductor.org/packages/IHW)). Thus IHW can also be installed from there as follows:
+
 
 ```R
 source("https://bioconductor.org/biocLite.R")
