@@ -27,7 +27,7 @@ expect_equal(rejections(ihw_res1), rejections(ihw_res1_formula2))
 
 # try same simulation with other value of alpha
 ihw_res1_lower_alpha <- ihw(sim$pvalue, sim$filterstat, .01, nbins=10)
-testthat::expect_less_than( rejections(ihw_res1_lower_alpha), rejections(ihw_res1))
+testthat::expect_lt( rejections(ihw_res1_lower_alpha), rejections(ihw_res1))
 
 # try with only 1 fold
 expect_message(ihw_res1_single_fold <- ihw(sim$pvalue, sim$filterstat, .1, nbins=10, nfolds=1))
@@ -111,7 +111,7 @@ sim3 <- wasserman_normal_sim(2000,0.85, 0, 3, seed=1)
 ihw_naive <- ihw(sim3$pvalue, sim3$filterstat, .1, nfolds=1L, nbins=3L, lambdas=Inf, distrib_estimator="ECDF")
 # should have increased rejections compared to BH
 # also opportunity to test get_bh_threshold
-expect_less_than( sum(sim3$pvalue <= get_bh_threshold(sim3$pvalue, .1)), rejections(ihw_naive))
+expect_lt( sum(sim3$pvalue <= get_bh_threshold(sim3$pvalue, .1)), rejections(ihw_naive))
 
 
 
