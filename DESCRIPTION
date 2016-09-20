@@ -1,9 +1,8 @@
 Package: IHW
 Title: Independent Hypothesis Weighting
-Version: 1.1.3
-Authors@R: c(person("Nikos", "Ignatiadis", email = "nikos.ignatiadis01@gmail.com",
-                  role = c("aut", "cre")),
-             person("Wolfgang", "Huber", role="aut"))
+Version: 1.1.4
+Authors@R: c(person("Nikos", "Ignatiadis", email = "nikos.ignatiadis01@gmail.com", role = c("aut", "cre")),
+             person("Wolfgang", "Huber", role = "aut"))
 Description: Independent hypothesis weighting (IHW) is a multiple testing
     procedure that increases power compared to the method of Benjamini and Hochberg by assigning
     data-driven weights to each hypothesis. The input to IHW is a two-column
