@@ -189,12 +189,11 @@ deRes <- na.omit(deRes)
 deRes$geneid <- as.numeric(gsub("ENSG[+]*", "", rownames(deRes)))
 
 # set up data frame for plotting
-df <- rbind(data.frame(pvalue = deRes$pvalue, covariate = rank(deRes$baseMean)/nrow(deRes), 
-                       covariate_type="base mean"),
-            data.frame(pvalue = deRes$pvalue, covariate = rank(deRes$geneid)/nrow(deRes), 
-                       covariate_type="gene id"))
-
-ggplot(df, aes(x = covariate, y = -log10(pvalue))) + geom_hex(bins = 100) + 
+rbind(data.frame(pvalue = deRes$pvalue, covariate = rank(deRes$baseMean)/nrow(deRes), 
+                 covariate_type="base mean"),
+      data.frame(pvalue = deRes$pvalue, covariate = rank(deRes$geneid)/nrow(deRes), 
+                 covariate_type="gene id")) %>%
+ggplot(aes(x = covariate, y = -log10(pvalue))) + geom_hex(bins = 100) + 
    facet_grid( . ~ covariate_type) + ylab(expression(-log[10]~p))
 ```
 
