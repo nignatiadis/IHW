@@ -1,5 +1,5 @@
 ---
-title: "Introduction to IHW"
+title: "Introduction to Independent Hypothesis Weighting with the IHW Package"
 author: "Nikos Ignatiadis, Wolfgang Huber"
 package: "`r pkg_ver('IHW')`"
 output:
@@ -15,12 +15,12 @@ vignette: >
 ---
 
 ```{r setup, echo = FALSE}
-knitr::opts_chunk$set(tidy = FALSE, cache = TRUE, autodep = TRUE)
+knitr::opts_chunk$set(tidy = FALSE, cache = TRUE, autodep = TRUE, dev = c("png", "pdf"), dpi = 360)
 ```
 
 # Introduction
 
-You will probably be familiar with multiple testing procedures that take a set of p-values and then calculate adjusted p-values. Given a significance level $\alpha$, one can then declare the rejected hypotheses. In R this is most commonly done with the `p.adjust` function in the `r CRANpkg("stats")` package, and a popular choice is controlling the false discovery rate (FDR) with the method of [@benjamini1995controlling], provided by the choice `method="BH"` in `p.adjust`. An interesting aspect of this and other methods --responsible both for their versatility and limitations-- is that they do not use anything else beyond the p-values: no other potential information that might set the tests apart, such as different signal quality, power, prior probability.
+You will probably be familiar with multiple testing procedures that take a set of p-values and then calculate adjusted p-values. Given a significance level $\alpha$, one can then declare the rejected hypotheses. In R this is most commonly done with the `p.adjust` function in the `r CRANpkg("stats")` package, and a popular choice is controlling the false discovery rate (FDR) with the method of [@benjamini1995controlling], provided by the choice `method="BH"` in `p.adjust`. A characteristic feature of this and other methods --responsible both for their versatility and limitations-- is that they do not use anything else beyond the p-values: no other potential information that might set the tests apart, such as different signal quality, power, prior probability.
 
 IHW (Independent Hypothesis Weighting) is also a multiple testing procedure, but in addition to the p-values it allows you to specify a covariate for each test. The covariate should be informative of the power or prior probability of each individual test, but is chosen such that the p-values for those hypotheses that are truly null do not depend on the covariate [@ignatiadis2016natmeth]. Therefore the input of IHW is the following:
 
@@ -30,13 +30,12 @@ IHW (Independent Hypothesis Weighting) is also a multiple testing procedure, but
 
 IHW then calculates weights for each p-value (non-negative numbers $w_i \geq 0$ such that they average to 1, $\sum_{i=1}^m w_i = m$). IHW also returns a vector of adjusted p-values by applying the procedure of Benjamini Hochberg (BH) to the weighted p-values $P^\text{weighted}_i = \frac{P_i}{w_i}$. 
 
-The weights allow different prioritization of the individual hypotheses, based on their covariate. This means that the ranking of hypotheses with p-value weighting is in general different than without. Two hypotheses with the same p-value will can have different weighted p-values: the one with the higher weight will have a smaller value of $P^\text{weighted}_i$, and consequently it can even happen that one but not the other gets rejected by the subsequent BH procedure.
+The weights allow different prioritization of the individual hypotheses, based on their covariate. This means that the ranking of hypotheses with p-value weighting is in general different than without. Two hypotheses with the same p-value can have different weighted p-values: the one with the higher weight will then have a smaller value of $P^\text{weighted}_i$, and consequently it can even happen that one but not the other gets rejected by the subsequent BH procedure.
 
-Let's see how to use the IHW package in analysing for RNA-Seq differential gene expression and then also look at some other examples where the method is applicable.
+As an example, let's see how to use the IHW package in analysing for RNA-Seq differential gene expression.  and then also look at some other examples where the method is applicable.
 
-# IHW and DESeq2
+# An example: RNA-Seq differential expression
 
-## IHW for FDR control
 We analyze the `r Biocpkg("airway")` RNA-Seq dataset using `r Biocpkg("DESeq2")` [@love2014moderated].
 
 ```{r loadlibs, message=FALSE, warning=FALSE}
@@ -56,8 +55,9 @@ The output is a `r class(de_res)` object, which includes the following columns f
 colnames(de_res)
 ```
 
-In particular, we have p-values and baseMean (i.e., the mean of normalized counts) for each gene. As argued in the 
-`r Biocpkg("DESeq2")` paper, these two statistics are approximately independent under the null hypothesis. Thus we have all the ingredient necessary for a `r Biocpkg("IHW")` analysis (p-values and covariates), which we will apply at a significance level 0.1.
+In particular, we have p-values and baseMean (i.e., the mean of normalized counts) for each gene. As argued in the `r Biocpkg("DESeq2")` paper, these two statistics are approximately independent under the null hypothesis. Thus we have all the ingredient necessary for a `r Biocpkg("IHW")` analysis (p-values and covariates), which we will apply at a significance level 0.1.
+
+## FDR control
 
 First load IHW:
 ```{r loadihw, message=FALSE, warning=FALSE}
@@ -113,22 +113,24 @@ We can also see this internal representation of the weights as a ($n$ X $k$) mat
 weights(ihw_res, levels_only = TRUE)
 ```
 
-### Diagnostic plot: estimated weights
+## Diagnostic plots
+### Estimated weights
 
-```{r plot_ihw_res_weights, fig.width = 6, fig.height = 3.6, dev = c("png", "pdf")}
+```{r plot_ihw_res_weights, fig.width = 6, fig.height = 3.6, out.width = "600px"}
 plot(ihw_res)
 ```
 
-We see that the general trend is driven by the covariate (stratum) and not as much by the fold. Recall that IHW assumes that the "optimal" weights should be a function of the covariate (and hence the stratum) only. Therefore, the weight functions calculated on random (overlapping) splits of the data should behave similarly, while there should be no trend driven by the folds. Also as expected, genes with very low `baseMean` count get assigned a weight of 0, while genes with high baseMean count get prioritized.
+We see that the general trend is driven by the covariate (stratum) and is the same across the different folds. As expected, the weight functions calculated on different random subsets of the data behave similarly. For the data at hand, genes with very low `baseMean` count get assigned a weight of 0, while genes with high baseMean count get prioritized.
 
-### Diagnostic plot: decision boundary
-```{r plot_ihw_res_decisionboundary, fig.width = 6, fig.height = 3.6, dev = c("png", "pdf")}
+### Decision boundary
+```{r plot_ihw_res_decisionboundary, fig.width = 6, fig.height = 3.6, out.width = "600px"}
 plot(ihw_res, what = "decisionboundary") 
 ```
+The plot shows the implied decision boundaries for the unweighted p-values, as a function of the covariate.
 
-### Diagnostic plot: raw versus adjusted p-values
+### Raw versus adjusted p-values
 
-```{r plot_ihw_res_rawvsadj, fig.width = 6, fig.height = 3.6, warning = FALSE, dev = c("png", "pdf")}
+```{r plot_ihw_res_rawvsadj, fig.width = 6, fig.height = 3.6, warning = FALSE, out.width = "600px"}
 gg <- ggplot(as.data.frame(ihw_res), aes(x = pvalue, y = adj_pvalue, col = group)) + 
   geom_point(size = 0.25) + 
   scale_colour_hue(l = 70, c = 150, drop = FALSE)
@@ -144,7 +146,7 @@ ihw_res_df <- as.data.frame(ihw_res)
 colnames(ihw_res_df)
 ```
 
-## IHW for FWER control
+## FWER control with IHW
 The standard IHW method presented above controls the FDR by using a weighted Benjamini-Hochberg procedure with data-driven weights. The same principle can be applied for FWER control by using a weighted Bonferroni procedure. Everything works exactly as above by using the keyword argument `adjustment_type`. For example:
 
 ```{r eval=FALSE}
@@ -152,7 +154,7 @@ ihw_bonf <- ihw(pvalue ~ baseMean, data=de_res, alpha = 0.1, adjustment_type = "
 ```
 
 
-# Choice of a covariate
+# Other data types, and how to choose the covariate
 
 ## Criteria for choosing a covariate
 In which cases is IHW applicable? Whenever we have a covariate that is:
@@ -162,7 +164,7 @@ In which cases is IHW applicable? Whenever we have a covariate that is:
 3. not notably related to the dependence structure -if there is any- of the joint test statistics.
 
 
-## A few examples of such covariates
+## Examples
 
  *  For row-wise $t$-tests we can use the overall (row-wise) variance [@bourgon2010independent]. 
  *  For row-wise rank-based tests (e.g. Wilcoxon) we can use any function that does not depend on the order of arguments [@bourgon2010independent].
@@ -184,7 +186,7 @@ Below we describe a few useful diagnostics to check whether the criteria for the
 
 To check whether the covariate is informative about power under the alternative (property 1), plot the p-values (or usually better, $-\log_{10}(\text{p-values})$) against the ranks of the covariate:
 
-```{r rkpvslogp, fig.width = 6, fig.height = 3}
+```{r rkpvslogp, fig.width = 6, fig.height = 3, out.width = "800px"}
 de_res <- na.omit(de_res)
 de_res$geneid <- as.numeric(gsub("ENSG[+]*", "", rownames(de_res)))
 
@@ -194,12 +196,11 @@ df <- rbind(data.frame(pvalue = de_res$pvalue, covariate = rank(de_res$baseMean)
             data.frame(pvalue = de_res$pvalue, covariate = rank(de_res$geneid)/nrow(de_res), 
                        covariate_type="gene id"))
 
-ggplot(df, aes(x=covariate, y = -log10(pvalue))) +
-                         geom_hex(bins = 100) + 
-                         facet_grid( . ~ covariate_type)
+ggplot(df, aes(x = covariate, y = -log10(pvalue))) + geom_hex(bins = 100) + 
+   facet_grid( . ~ covariate_type) + ylab(expression(-log[10]~p))
 ```
 
-On the left, we plotted $-log_{10}(\text{p-value})$ agains the (normalized) ranks of the base mean of normalized counts. This was the covariate we used in our `r Biocpkg("DESeq2")` example above. We see a clear trend: Low p-values are enriched at high covariate values. For very low covariate values, there are almost no small p-values. This indicates that the base mean covariate is correlated with power under the alternative.
+On the left, we plotted $-\log_{10}(\text{p-value})$ agains the (normalized) ranks of the base mean of normalized counts. This was the covariate we used in our `r Biocpkg("DESeq2")` example above. We see the trend: low p-values are enriched at high covariate values. For very low covariate values, there are almost no small p-values. This indicates that the base mean covariate is correlated with power under the alternative.
 
 On the other hand, the right plot uses a less useful statistic; the gene identifiers interpreted as numbers. Here, there is no obvious trend to be detected.
 
@@ -207,7 +208,7 @@ On the other hand, the right plot uses a less useful statistic; the gene identif
 
 One of the most useful diagnostic plots is the p-value histogram (before applying any multiple testing procedure). We first do this for our `r Biocpkg("DESeq2")` p-values:
 
-```{r pvalhistogram, fig.width = 3, fig.height = 3}
+```{r pvalhistogram, fig.width = 3, fig.height = 3, out.width = "350px"}
 ggplot(de_res, aes(x = pvalue)) + geom_histogram(binwidth = 0.025, boundary = 0)
 ```
 
@@ -217,7 +218,7 @@ Now, when applying IHW with covariates, it is instrumental to not only check the
 
 Here we split the hypotheses by the base mean of normalized counts into a few strata and then visualize the conditional histograms:
 
-```{r goodhist, fig.width = 8, fig.height = 5}
+```{r goodhist, fig.width = 8, fig.height = 5, out.width = "1000px"}
 de_res$baseMean_group <- groups_by_filter(de_res$baseMean, 8)
 
 ggplot(de_res, aes(x=pvalue)) + 
@@ -225,24 +226,24 @@ ggplot(de_res, aes(x=pvalue)) +
   facet_wrap( ~ baseMean_group, nrow = 2)
 ```
 
-Notice that all of these histograms are well calibrated, since all of them show a uniform distribution at large p-values. In many realistic examples, if this is the case, then IHW will control the FDR. Thus, this is a good check of whether properties 2 and 3 hold. In addition, these conditional histograms also illustrate whether property 1 holds: Notice that as we move to strata corresponding to higher mean counts, the peak close to 0 becomes taller and the height of the uniform tail becomes lower. This means that the covariate is associated with power under the alternative.
+Note that all of these histograms are well calibrated, since all of them show a uniform distribution at large p-values. In many realistic examples, if this is the case, then IHW will control the FDR. Thus, this is a good check of whether properties 2 and 3 hold. In addition, these conditional histograms also illustrate whether property 1 holds: as we move to strata with higher mean counts, the peak close to 0 becomes taller and the height of the uniform tail becomes lower. This means that the covariate is associated with power under the alternative.
 
 The empirical cumulative distribution functions (ECDF) offer a variation of this visualisation. Here, one should check whether the curves can be easily distinguished and whether they are almost linear for high p-values.
 
-```{r goodecdf, fig.width = 5, fig.height = 3}
+```{r goodecdf, fig.width = 5, fig.height = 3, out.width = "600px"}
 ggplot(de_res, aes(x = pvalue, col = baseMean_group)) + stat_ecdf(geom = "step") 
 ```
 
 Finally, as an example of an invalid covariate, we use the estimated log fold change. Of course, this is not independent of the p-values under the null hypothesis. We confirm this by plotting conditional histograms / ECDFs, which are not well calibrated:
 
-```{r badhist, fig.width = 8, fig.height = 5}
+```{r badhist, fig.width = 8, fig.height = 5, out.width = "1000px"}
 de_res$lfc_group <- groups_by_filter(abs(de_res$log2FoldChange),8)
 
 ggplot(de_res, aes(x = pvalue)) + 
   geom_histogram(binwidth = 0.025, boundary = 0) +
   facet_wrap( ~ lfc_group, nrow=2)
 ```
-```{r badecdf, fig.width = 5, fig.height = 3}
+```{r badecdf, fig.width = 5, fig.height = 3, out.width = "600px"}
 ggplot(de_res, aes(x = pvalue, col = lfc_group)) + stat_ecdf(geom = "step") 
 ```
 
@@ -279,39 +280,35 @@ sum( padj <= 0.1)
 Now assume we only have access to the p-values $\leq 0.1$:
 
 ```{r}
-filter_threshold <- 0.1
-selected <- which(pvalue <= filter_threshold)
-pvalue_filt <- pvalue[selected]
+reporting_threshold <- 0.1
+reported <- which(pvalue <= reporting_threshold)
+pvalue_reported <- pvalue[reported]
 ```
 
 Then we can still use `p.adjust`, as long as we inform it of how many hypotheses were really tested (not just the ones with p-value $\leq 0.1$). We specify this by setting the `n` function argument.
 
-```{r compareselected, fig.width=3, fig.height=3}
-padj_filt <- p.adjust(pvalue_filt, method = "BH", n = length(pvalue))
-qplot(padj[selected], padj_filt)
-sum(padj_filt <= 0.1)  
+```{r compareselected1, fig.width = 3, fig.height = 3, out.width = "300px"}
+padj_reported <- p.adjust(pvalue_reported, method = "BH", n = length(pvalue))
+qplot(padj[reported], padj_reported) + geom_point(cex = 0.2)
+```
+The plot shows the BH-adjusted p-values computed from all p-values and then subset to `reported` (x-axis) versus the BH-adjusted p-values computed from the subset of `reported` p-values only, using the `n` argument of `p.adjust` (y-axis).
+```{r compareselected2}
+sum(padj_reported <= 0.1)  
 ```
 ```{r justcheck, echo=FALSE}
-stopifnot(max(abs(padj[selected]- padj_filt)) <= 0.001)
+stopifnot(max(abs(padj[reported] - padj_reported)) <= 0.001)
 ```
-We see that we get exactly the same number of rejections, as when we used the whole p-value vector as input. Now, the same approach can be used with IHW, but is slighly more complicated. In particular, we need to provide information about how many hypotheses were conducted at each given value of the covariate. This means that there are two modifications to the standard IHW workflow: 
+We see that we get exactly the same number of rejections as when we used the whole p-value vector as input. Now, the same approach can be used with IHW, but is slighly more complicated. In particular, we need to provide information about how many hypotheses were tested at each given value of the covariate. This means that there are two modifications to the standard IHW workflow: 
 
  * If a numeric covariate is provided, IHW internally discretizes it and 
-in this way bins the hypotheses into groups (strata). For the advanced functionality, this discretization has to be done manually by the user. In other words, the covariate provided by the user has to be a factor. For this, the convenience function `groups_by_filter` is provided, which returns a
-factor that stratifies a numeric covariate into a given number of
-groups with approximately the same number of hypotheses in each of the
-groups. This is a very simple function, largely equivalent to `cut(., quantile(., probs=seq(0, 1, length.out=nbins))`.
- * For the algorithm to work correctly, it is necessary to know the total
-number of hypotheses in each of the bins. However, if filtered p-values
-are used, IHW obviously cannot infer the number of hypotheses per bin
-automatically.Therefore, the user has to specify the number of hypotheses per bin
-manually via the `m_groups` option. (When there is only 1 bin, IHW reduces to BH and `m_groups` would be
-equivalent to the `n` keyword of `p.adjust`.)
+in this way bins the hypotheses into groups (strata). For the advanced functionality, this discretization has to be done manually by the user. In other words, the covariate provided by the user has to be a factor. For this, the convenience function `groups_by_filter` is provided, which returns a factor that stratifies a numeric covariate into a given number of
+groups with approximately the same number of hypotheses in each of the groups. This is a very simple function, largely equivalent to `cut(., quantile(., probs = seq(0, 1, length.out = nbins))`.
+ * For the algorithm to work correctly, it is necessary to know the total number of hypotheses in each of the bins. However, if filtered p-values are used, IHW obviously cannot infer the number of hypotheses per bin automatically. Therefore, the user has to specify the number of hypotheses per bin manually via the `m_groups` option. (When there is only 1 bin, IHW reduces to BH and `m_groups` would be equivalent to the `n` keyword of `p.adjust`.)
 
-For example, when the whole grouping factor is available (e.g. when it was generated by using `groups_by_filter` on the full vector of covariates), then one can apply the  `table` function  on it 
+For example, when the whole grouping factor is available (e.g., when it was generated by using `groups_by_filter` on the full vector of covariates), then one can apply the  `table` function  on it 
 to calculate the number of hypotheses per bin. This is then
-used as an input for the `m_groups` argument. More elaborate strategies might be needed in more complicated case, 
-e.g. when the full vector of covariates can also not fit into RAM.
+used as an input for the `m_groups` argument. More elaborate strategies might be needed in more complicated cases, 
+e.g., when the full vector of covariates does not fit into memory.
 
 ```{r}
 nbins <- 20
@@ -319,7 +316,7 @@ sim$group <- groups_by_filter(sim$X, nbins)
 m_groups <- table(sim$group)
 ```
 
-Now we can subset our data frame to only keep low p-values and then apply IHW with the manually specified `m_groups`.
+Now we can subset our data frame to only keep low p-values and then apply `ihw` with the manually specified `m_groups`.
 
 ```{r}
 sim_filtered <- subset(sim, sim$pvalue <= filter_threshold) 
