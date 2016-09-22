@@ -39,20 +39,17 @@ As an example, let's see how to use the IHW package in analysing for RNA-Seq dif
 We analyze the `r Biocpkg("airway")` RNA-Seq dataset using `r Biocpkg("DESeq2")` [@love2014moderated].
 
 ```{r loadlibs, message=FALSE, warning=FALSE}
-library("ggplot2")
-library("methods")
-library("airway")
 library("DESeq2")
-data("airway")
-dds <- DESeqDataSet(se = airway, design = ~ cell + dex)
-dds <- DESeq(dds)
-de_res <- as.data.frame(results(dds))
+library("magrittr")
+data("airway", package = "airway")
+dds <- DESeqDataSet(se = airway, design = ~ cell + dex) %>% DESeq
+deRes <- as.data.frame(results(dds))
 ```
 
-The output is a `r class(de_res)` object, which includes the following columns for each gene:
+The output is a dataframe with the following columns, and one row for each tested hypothesis (i.e., for each gene):
 
-```{r colnames_de_res}
-colnames(de_res)
+```{r colnames_deRes}
+colnames(deRes)
 ```
 
 In particular, we have p-values and baseMean (i.e., the mean of normalized counts) for each gene. As argued in the `r Biocpkg("DESeq2")` paper, these two statistics are approximately independent under the null hypothesis. Thus we have all the ingredient necessary for a `r Biocpkg("IHW")` analysis (p-values and covariates), which we will apply at a significance level 0.1.
@@ -62,47 +59,47 @@ In particular, we have p-values and baseMean (i.e., the mean of normalized count
 First load IHW:
 ```{r loadihw, message=FALSE, warning=FALSE}
 library("IHW")
-ihw_res <- ihw(pvalue ~ baseMean,  data = de_res, alpha = 0.1)
+ihwRes <- ihw(pvalue ~ baseMean,  data = deRes, alpha = 0.1)
 ```
 
-This returns an object of the class `r class(ihw_res)`. We can get, e.g., the total number of rejections.
+This returns an object of the class `r class(ihwRes)`. We can get, e.g., the total number of rejections.
 
 ```{r rejections}
-rejections(ihw_res)
+rejections(ihwRes)
 ```
 
 And we can also extract the adjusted p-values:
 ```{r headadjp}
-head(adj_pvalues(ihw_res))
-sum(adj_pvalues(ihw_res) <= 0.1, na.rm = TRUE) == rejections(ihw_res)
+head(adj_pvalues(ihwRes))
+sum(adj_pvalues(ihwRes) <= 0.1, na.rm = TRUE) == rejections(ihwRes)
 ```
 
 We can compare this to the result of applying the method of Benjamini and Hochberg to the p-values only:
 
 ```{r compareBH1}
-padj_bh <- p.adjust(de_res$pvalue, method = "BH")
-sum(padj_bh <= 0.1, na.rm = TRUE)
+padjBH <- p.adjust(deRes$pvalue, method = "BH")
+sum(padjBH <= 0.1, na.rm = TRUE)
 ```
 ```{r compareBH2, echo = FALSE}
-stopifnot( sum(padj_bh <= 0.1, na.rm = TRUE) < 0.9 * rejections(ihw_res) )
+stopifnot( sum(padjBH <= 0.1, na.rm = TRUE) < 0.9 * rejections(ihwRes) )
 ```
 
 `r Biocpkg("IHW")` produced quite a bit more rejections than that. 
 How did we get this power? Essentially it was possible by assigning appropriate weights to each hypothesis. We can retrieve the weights as follows:
 
 ```{r headweights}
-head(weights(ihw_res))
+head(weights(ihwRes))
 ```
 ```{r nbinsnfolds, echo = FALSE}
 ## somehow inlining this code caching does not work when code is 
-nbins_ihw_res <- nbins(ihw_res)
-nfolds_ihw_res <- nfolds(ihw_res)
+nbins_ihwRes <- nbins(ihwRes)
+nfolds_ihwRes <- nfolds(ihwRes)
 ```
-Internally, what happened was the following: We split the hypotheses into $n$ different strata (here $n=`r nbins_ihw_res`$) based on increasing value of `baseMean` and we also randomly split them into $k$ folds (here $k=`r nfolds_ihw_res`$). Then, for each combination of fold and stratum, we learned the weights. The discretization into strata facilitates the estimation of the distribution function conditionally on the covariate and the optimization of the weights. The division into random folds helps us to avoid overfitting the data, something which could otherwise result in loss of control of the FDR [@ignatiadis2016natmeth].
+Internally, what happened was the following: We split the hypotheses into $n$ different strata (here $n=`r nbins_ihwRes`$) based on increasing value of `baseMean` and we also randomly split them into $k$ folds (here $k=`r nfolds_ihwRes`$). Then, for each combination of fold and stratum, we learned the weights. The discretization into strata facilitates the estimation of the distribution function conditionally on the covariate and the optimization of the weights. The division into random folds helps us to avoid overfitting the data, something which could otherwise result in loss of control of the FDR [@ignatiadis2016natmeth].
 
 The values of $n$ and $k$ can be accessed through
 ```{r}
-c(nbins(ihw_res), nfolds(ihw_res))
+c(nbins(ihwRes), nfolds(ihwRes))
 ```
 
 In particular, each hypothesis test gets assigned a weight depending on the combination of its assigned fold and stratum.
@@ -110,47 +107,48 @@ In particular, each hypothesis test gets assigned a weight depending on the comb
 We can also see this internal representation of the weights as a ($n$ X $k$) matrix:
 
 ```{r}
-weights(ihw_res, levels_only = TRUE)
+weights(ihwRes, levels_only = TRUE)
 ```
 
 ## Diagnostic plots
 ### Estimated weights
 
-```{r plot_ihw_res_weights, fig.width = 6, fig.height = 3.6, out.width = "600px"}
-plot(ihw_res)
+```{r plot_ihwRes_weights, fig.width = 6, fig.height = 3.6, out.width = "600px"}
+plot(ihwRes)
 ```
 
 We see that the general trend is driven by the covariate (stratum) and is the same across the different folds. As expected, the weight functions calculated on different random subsets of the data behave similarly. For the data at hand, genes with very low `baseMean` count get assigned a weight of 0, while genes with high baseMean count get prioritized.
 
 ### Decision boundary
-```{r plot_ihw_res_decisionboundary, fig.width = 6, fig.height = 3.6, out.width = "600px"}
-plot(ihw_res, what = "decisionboundary") 
+```{r plot_ihwRes_decisionboundary, fig.width = 6, fig.height = 3.6, out.width = "600px"}
+plot(ihwRes, what = "decisionboundary") 
 ```
 The plot shows the implied decision boundaries for the unweighted p-values, as a function of the covariate.
 
 ### Raw versus adjusted p-values
 
-```{r plot_ihw_res_rawvsadj, fig.width = 6, fig.height = 3.6, warning = FALSE, out.width = "600px"}
-gg <- ggplot(as.data.frame(ihw_res), aes(x = pvalue, y = adj_pvalue, col = group)) + 
+```{r plot_ihwRes_rawvsadj, fig.width = 6, fig.height = 3.6, warning = FALSE, out.width = "600px"}
+library("ggplot2")
+gg <- ggplot(as.data.frame(ihwRes), aes(x = pvalue, y = adj_pvalue, col = group)) + 
   geom_point(size = 0.25) + 
   scale_colour_hue(l = 70, c = 150, drop = FALSE)
 
 gg
-gg %+% subset(as.data.frame(ihw_res), adj_pvalue <= 0.2)
+gg %+% subset(as.data.frame(ihwRes), adj_pvalue <= 0.2)
 ```
  
-As you can see above, the `r class(ihw_res)` object `ihw_res` can be converted to a `data.frame`, which contains the following columns:
+As you can see above, the `r class(ihwRes)` object `ihwRes` can be converted to a dataframe that contains the following columns:
 
 ```{r}
-ihw_res_df <- as.data.frame(ihw_res)
-colnames(ihw_res_df)
+ihwResDf <- as.data.frame(ihwRes)
+colnames(ihwResDf)
 ```
 
 ## FWER control with IHW
 The standard IHW method presented above controls the FDR by using a weighted Benjamini-Hochberg procedure with data-driven weights. The same principle can be applied for FWER control by using a weighted Bonferroni procedure. Everything works exactly as above by using the keyword argument `adjustment_type`. For example:
 
-```{r eval=FALSE}
-ihw_bonf <- ihw(pvalue ~ baseMean, data=de_res, alpha = 0.1, adjustment_type = "bonferroni")
+```{r Bonferroni}
+ihwBonferroni <- ihw(pvalue ~ baseMean, data = deRes, alpha = 0.1, adjustment_type = "bonferroni")
 ```
 
 
@@ -187,13 +185,13 @@ Below we describe a few useful diagnostics to check whether the criteria for the
 To check whether the covariate is informative about power under the alternative (property 1), plot the p-values (or usually better, $-\log_{10}(\text{p-values})$) against the ranks of the covariate:
 
 ```{r rkpvslogp, fig.width = 6, fig.height = 3, out.width = "800px"}
-de_res <- na.omit(de_res)
-de_res$geneid <- as.numeric(gsub("ENSG[+]*", "", rownames(de_res)))
+deRes <- na.omit(deRes)
+deRes$geneid <- as.numeric(gsub("ENSG[+]*", "", rownames(deRes)))
 
 # set up data frame for plotting
-df <- rbind(data.frame(pvalue = de_res$pvalue, covariate = rank(de_res$baseMean)/nrow(de_res), 
+df <- rbind(data.frame(pvalue = deRes$pvalue, covariate = rank(deRes$baseMean)/nrow(deRes), 
                        covariate_type="base mean"),
-            data.frame(pvalue = de_res$pvalue, covariate = rank(de_res$geneid)/nrow(de_res), 
+            data.frame(pvalue = deRes$pvalue, covariate = rank(deRes$geneid)/nrow(deRes), 
                        covariate_type="gene id"))
 
 ggplot(df, aes(x = covariate, y = -log10(pvalue))) + geom_hex(bins = 100) + 
@@ -209,7 +207,7 @@ On the other hand, the right plot uses a less useful statistic; the gene identif
 One of the most useful diagnostic plots is the p-value histogram (before applying any multiple testing procedure). We first do this for our `r Biocpkg("DESeq2")` p-values:
 
 ```{r pvalhistogram, fig.width = 3, fig.height = 3, out.width = "350px"}
-ggplot(de_res, aes(x = pvalue)) + geom_histogram(binwidth = 0.025, boundary = 0)
+ggplot(deRes, aes(x = pvalue)) + geom_histogram(binwidth = 0.025, boundary = 0)
 ```
 
 This is a well calibrated histogram. As expected, for large p-values (e.g., for p-values $\geq 0.5$) the distribution looks uniform. This part of the histogram corresponds mainly to null p-values. On the other hand, there is a peak close to 0. This is due to the alternative hypotheses and can be observed whenever the tests have enough power to detect the alternative. In particular, in the  `r Biocpkg("airway")` dataset, as analyzed with DESeq2, we have a lot of power to detect differentially expressed genes. If you are not familiar with these concepts and more generally with interpreting p-value histograms, we recommend reading [David Robinson's blog post](http://varianceexplained.org/statistics/interpreting-pvalue-histogram/).
@@ -219,11 +217,11 @@ Now, when applying IHW with covariates, it is instrumental to not only check the
 Here we split the hypotheses by the base mean of normalized counts into a few strata and then visualize the conditional histograms:
 
 ```{r goodhist, fig.width = 8, fig.height = 5, out.width = "1000px"}
-de_res$baseMean_group <- groups_by_filter(de_res$baseMean, 8)
+deRes$baseMeanGroup <- groups_by_filter(deRes$baseMean, 8)
 
-ggplot(de_res, aes(x=pvalue)) + 
+ggplot(deRes, aes(x=pvalue)) + 
   geom_histogram(binwidth = 0.025, boundary = 0) +
-  facet_wrap( ~ baseMean_group, nrow = 2)
+  facet_wrap( ~ baseMeanGroup, nrow = 2)
 ```
 
 Note that all of these histograms are well calibrated, since all of them show a uniform distribution at large p-values. In many realistic examples, if this is the case, then IHW will control the FDR. Thus, this is a good check of whether properties 2 and 3 hold. In addition, these conditional histograms also illustrate whether property 1 holds: as we move to strata with higher mean counts, the peak close to 0 becomes taller and the height of the uniform tail becomes lower. This means that the covariate is associated with power under the alternative.
@@ -231,20 +229,20 @@ Note that all of these histograms are well calibrated, since all of them show a 
 The empirical cumulative distribution functions (ECDF) offer a variation of this visualisation. Here, one should check whether the curves can be easily distinguished and whether they are almost linear for high p-values.
 
 ```{r goodecdf, fig.width = 5, fig.height = 3, out.width = "600px"}
-ggplot(de_res, aes(x = pvalue, col = baseMean_group)) + stat_ecdf(geom = "step") 
+ggplot(deRes, aes(x = pvalue, col = baseMeanGroup)) + stat_ecdf(geom = "step") 
 ```
 
 Finally, as an example of an invalid covariate, we use the estimated log fold change. Of course, this is not independent of the p-values under the null hypothesis. We confirm this by plotting conditional histograms / ECDFs, which are not well calibrated:
 
 ```{r badhist, fig.width = 8, fig.height = 5, out.width = "1000px"}
-de_res$lfc_group <- groups_by_filter(abs(de_res$log2FoldChange),8)
+deRes$lfcGroup <- groups_by_filter(abs(deRes$log2FoldChange),8)
 
-ggplot(de_res, aes(x = pvalue)) + 
+ggplot(deRes, aes(x = pvalue)) + 
   geom_histogram(binwidth = 0.025, boundary = 0) +
-  facet_wrap( ~ lfc_group, nrow=2)
+  facet_wrap( ~ lfcGroup, nrow=2)
 ```
 ```{r badecdf, fig.width = 5, fig.height = 3, out.width = "600px"}
-ggplot(de_res, aes(x = pvalue, col = lfc_group)) + stat_ecdf(geom = "step") 
+ggplot(deRes, aes(x = pvalue, col = lfcGroup)) + stat_ecdf(geom = "step") 
 ```
 
 ## Further reading about appropriate covariates
@@ -300,27 +298,21 @@ stopifnot(max(abs(padj[reported] - padj_reported)) <= 0.001)
 ```
 We see that we get exactly the same number of rejections as when we used the whole p-value vector as input. Now, the same approach can be used with IHW, but is slighly more complicated. In particular, we need to provide information about how many hypotheses were tested at each given value of the covariate. This means that there are two modifications to the standard IHW workflow: 
 
- * If a numeric covariate is provided, IHW internally discretizes it and 
-in this way bins the hypotheses into groups (strata). For the advanced functionality, this discretization has to be done manually by the user. In other words, the covariate provided by the user has to be a factor. For this, the convenience function `groups_by_filter` is provided, which returns a factor that stratifies a numeric covariate into a given number of
-groups with approximately the same number of hypotheses in each of the groups. This is a very simple function, largely equivalent to `cut(., quantile(., probs = seq(0, 1, length.out = nbins))`.
- * For the algorithm to work correctly, it is necessary to know the total number of hypotheses in each of the bins. However, if filtered p-values are used, IHW obviously cannot infer the number of hypotheses per bin automatically. Therefore, the user has to specify the number of hypotheses per bin manually via the `m_groups` option. (When there is only 1 bin, IHW reduces to BH and `m_groups` would be equivalent to the `n` keyword of `p.adjust`.)
+ * If a numeric covariate is provided, IHW internally discretizes it and in this way bins the hypotheses into groups (strata). For the advanced functionality, this discretization has to be done manually by the user. In other words, the covariate provided by the user has to be a factor. For this, the convenience function `groups_by_filter` is provided, which returns a factor that stratifies a numeric covariate into a given number of groups with approximately the same number of hypotheses in each of the groups. This is a very simple function, largely equivalent to `cut(., quantile(., probs = seq(0, 1, length.out = nbins))`.
+ * For the algorithm to work correctly, it is necessary to know the total number of hypotheses in each of the bins. However, if only a subset of p-values are reported, IHW obviously cannot know the number of hypotheses per bin automatically. Therefore, the user has to specify this information manually via the `m_groups` argument. (When there is only 1 bin, IHW reduces to BH and `m_groups` would be equivalent to the `n` argument of `p.adjust`.)
 
-For example, when the whole grouping factor is available (e.g., when it was generated by using `groups_by_filter` on the full vector of covariates), then one can apply the  `table` function  on it 
-to calculate the number of hypotheses per bin. This is then
-used as an input for the `m_groups` argument. More elaborate strategies might be needed in more complicated cases, 
-e.g., when the full vector of covariates does not fit into memory.
+For example, if the whole grouping factor is available (e.g., when it was generated by using `groups_by_filter` on the full vector of covariates), then one can apply the `table` function to it to calculate the number of hypotheses per bin. This is then used as an input for the `m_groups` argument. More elaborate strategies might be needed in more complicated cases, e.g., when the full vector of covariates does not fit into memory.
 
 ```{r}
 nbins <- 20
 sim$group <- groups_by_filter(sim$X, nbins)
-m_groups <- table(sim$group)
+m_groups  <- table(sim$group)
 ```
-
 Now we can subset our data frame to only keep low p-values and then apply `ihw` with the manually specified `m_groups`.
 
 ```{r}
-sim_filtered <- subset(sim, sim$pvalue <= filter_threshold) 
-ihw_filt <- ihw(pvalue ~ group, data=sim_filtered,
+sim_reported <- subset(sim, sim$pvalue <= reporting_threshold) 
+ihw_filt <- ihw(pvalue ~ group, data = sim_reported,
                 alpha = .1, m_groups = m_groups)
 rejections(ihw_filt)
 ```
