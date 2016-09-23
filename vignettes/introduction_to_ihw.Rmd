@@ -38,9 +38,9 @@ As an example, let's see how to use the IHW package in analysing for RNA-Seq dif
 
 We analyze the `r Biocpkg("airway")` RNA-Seq dataset using `r Biocpkg("DESeq2")` [@love2014moderated].
 
-```{r loadlibs, message=FALSE, warning=FALSE}
+```{r loadlibs, message = FALSE, warning = FALSE}
 library("DESeq2")
-library("magrittr")
+library("dplyr")
 data("airway", package = "airway")
 dds <- DESeqDataSet(se = airway, design = ~ cell + dex) %>% DESeq
 deRes <- as.data.frame(results(dds))
@@ -57,7 +57,7 @@ In particular, we have p-values and baseMean (i.e., the mean of normalized count
 ## FDR control
 
 First load IHW:
-```{r loadihw, message=FALSE, warning=FALSE}
+```{r loadihw, message = FALSE, warning = FALSE}
 library("IHW")
 ihwRes <- ihw(pvalue ~ baseMean,  data = deRes, alpha = 0.1)
 ```
@@ -127,17 +127,15 @@ The plot shows the implied decision boundaries for the unweighted p-values, as a
 
 ### Raw versus adjusted p-values
 
-```{r plot_ihwRes_rawvsadj, fig.width = 6, fig.height = 3.6, warning = FALSE, out.width = "600px"}
+```{r plot_ihwRes_rawvsadj, fig.width = 6, fig.height = 3.6, warning = FALSE, out.width = "600px", message = FALSE, warning = FALSE}
 library("ggplot2")
 gg <- ggplot(as.data.frame(ihwRes), aes(x = pvalue, y = adj_pvalue, col = group)) + 
-  geom_point(size = 0.25) + 
-  scale_colour_hue(l = 70, c = 150, drop = FALSE)
-
+  geom_point(size = 0.25) + scale_colour_hue(l = 70, c = 150, drop = FALSE)
 gg
 gg %+% subset(as.data.frame(ihwRes), adj_pvalue <= 0.2)
 ```
  
-As you can see above, the `r class(ihwRes)` object `ihwRes` can be converted to a dataframe that contains the following columns:
+The `r class(ihwRes)` object `ihwRes` can be converted to a dataframe that contains the following columns:
 
 ```{r}
 ihwResDf <- as.data.frame(ihwRes)
@@ -145,12 +143,11 @@ colnames(ihwResDf)
 ```
 
 ## FWER control with IHW
-The standard IHW method presented above controls the FDR by using a weighted Benjamini-Hochberg procedure with data-driven weights. The same principle can be applied for FWER control by using a weighted Bonferroni procedure. Everything works exactly as above by using the keyword argument `adjustment_type`. For example:
+The standard IHW method presented above controls the FDR by using a weighted Benjamini-Hochberg procedure with data-driven weights. The same principle can be applied for FWER control by using a weighted Bonferroni procedure. Everything works exactly as above, just use the argument `adjustment_type`. For example:
 
 ```{r Bonferroni}
 ihwBonferroni <- ihw(pvalue ~ baseMean, data = deRes, alpha = 0.1, adjustment_type = "bonferroni")
 ```
-
 
 # Other data types, and how to choose the covariate
 
@@ -164,10 +161,10 @@ In which cases is IHW applicable? Whenever we have a covariate that is:
 
 ## Examples
 
- *  For row-wise $t$-tests we can use the overall (row-wise) variance [@bourgon2010independent]. 
- *  For row-wise rank-based tests (e.g. Wilcoxon) we can use any function that does not depend on the order of arguments [@bourgon2010independent].
+ *  For $t$-tests we can use the overall variance [@bourgon2010independent]. 
+ *  For rank-based tests (e.g., Wilcoxon) we can use any function that does not depend on the order of arguments [@bourgon2010independent].
  *  In DESeq2, we can use `baseMean`, as illustrated above [@love2014moderated].
- *  In  eQTL analysis we can use the SNP-gene distance, the DNAse sensitivity, a HiC score, etc. [@ignatiadis2016natmeth].
+ *  In  eQTL analysis we can use SNP-gene distance, DNAse sensitivity, a HiC-derived measure for proximity, etc. [@ignatiadis2016natmeth].
  *  In genome-wide association (GWAS), the allele frequency.
  *  In quantitative proteomics with mass spectrometry, the number of peptides [@ignatiadis2016natmeth].
 
@@ -188,7 +185,7 @@ To check whether the covariate is informative about power under the alternative 
 deRes <- na.omit(deRes)
 deRes$geneid <- as.numeric(gsub("ENSG[+]*", "", rownames(deRes)))
 
-# set up data frame for plotting
+# set up data frame for ggplotting
 rbind(data.frame(pvalue = deRes$pvalue, covariate = rank(deRes$baseMean)/nrow(deRes), 
                  covariate_type="base mean"),
       data.frame(pvalue = deRes$pvalue, covariate = rank(deRes$geneid)/nrow(deRes), 
@@ -249,71 +246,80 @@ For more details regarding choice and diagnostics of covariates, please also con
 
 # Advanced usage: Working with incomplete p-value lists
 
-So far, we have assumed that a complete list of p-values is available, i.e. one p-value per hypothesis. However, this information is not always available or practical:
+So far, we have assumed that a complete list of p-values is available, i.e. for each test that was performed we know the resulting p-value. However, this information is not always available or practical.
 
- * This can be related to the software tools used for the calculation of the p-values. For example, as noted in [@ochoa2015beyond], some tools, such as HMMER, only return the lowest p-values. Similarly, MatrixEQTL [@shabalin2012matrix] by default only returns p-values below a pre-specified threshold, for example all p-values below $10^{-5}$. In the case of HMMER, this is done because higher p-values are not reliable, while for MatrixEQTL it reduces storage requirements. 
- * Even if p-values for all hypotheses are available, explicit computation on them might exhaust the available computing resources (in particular, working memory).
+ * Some software tools simply do not calculate or report all p-values. For example, as noted by [@ochoa2015beyond], HMMER only returns the lowest p-values. Similarly, MatrixEQTL [@shabalin2012matrix] by default only returns p-values below a pre-specified threshold, for example all p-values below $10^{-5}$. In the case of HMMER, this is done because higher p-values are not reliable, while for MatrixEQTL it reduces storage requirements. 
+ * Generally for very large multiple testing problems, it can be practical to only explicitly compute and store small enough p-values, and for the larger ones only record that they they were large, but not the precise value. This can greatly reduce the needed computing resources (in particular, working memory).
  
-Since rejections take place for low p-values (at the tails of the p-value distribution), we do not lose a lot of information by discarding the high p-values from the analysis, as long as we keep track of how many of them there are. Thus, the above situations can be easily handled.
+Since rejections take place at the low end of the p-value distribution, we do not lose a lot of information by discarding the exact values of the higher p-values, as long as we keep track of how many of them there are. Thus, the above situations can be easily handled.
 
-Before proceeding with the walkthrough for handling such cases with IHW, we quickly review how this is handled by `p.adjust`. We first simulate some data, where the power under the alternative depends on a covariate. p-values are calculated by a simple one-sided z-test.
+Before proceeding with the walkthrough for handling such cases with IHW, we quickly review how this is handled by `p.adjust`. We first simulate some data, where the power under the alternative depends on a covariate `X`. p-values are calculated by a simple one-sided z-test.
 
-```{r}
-set.seed(1)
-X   <- runif(100000, min = 0, max = 2.5)      # covariate
-H   <- rbinom(100000, size = 1, prob = 0.1)   # hypothesis true or false
-Z   <- rnorm(100000, mean = H*X)              # Z-score
-pvalue <- 1 - pnorm(Z)                        # pvalue
-sim <- data.frame(X = X, H = H, Z = Z, pvalue = pvalue)
+```{r sim}
+sim <- tibble(
+  X = runif(100000, min = 0, max = 2.5),         # covariate
+  H = rbinom(length(X), size = 1, prob = 0.1),   # hypothesis true or false
+  Z = rnorm(length(X), mean = H * X),            # Z-score
+  p = 1 - pnorm(Z))                              # pvalue
 ```
 
 We can apply the Benjamini-Hochberg procedure to these p-values:
 
-```{r}
-padj <- p.adjust(sim$pvalue, method="BH")
-sum( padj <= 0.1)
+```{r simBH}
+sim <- mutate(sim, padj = p.adjust(p, method="BH"))
+sum(sim$padj <= 0.1)
 ```
 
 Now assume we only have access to the p-values $\leq 0.1$:
 
-```{r}
+```{r simSub}
 reporting_threshold <- 0.1
-reported <- which(pvalue <= reporting_threshold)
-pvalue_reported <- pvalue[reported]
+sim <- mutate(sim, reported = (p <= reporting_threshold))
+simSub <- filter(sim, reported)
 ```
 
-Then we can still use `p.adjust`, as long as we inform it of how many hypotheses were really tested (not just the ones with p-value $\leq 0.1$). We specify this by setting the `n` function argument.
+Then we can still use `p.adjust` on `simSub`, as long as we inform it of how many hypotheses were originally. We specify this by setting the `n` function argument.
 
 ```{r compareselected1, fig.width = 3, fig.height = 3, out.width = "300px"}
-padj_reported <- p.adjust(pvalue_reported, method = "BH", n = length(pvalue))
-qplot(padj[reported], padj_reported) + geom_point(cex = 0.2)
+simSub = mutate(simSub, padj2 = p.adjust(p, method = "BH", n = nrow(sim)))
+ggplot(simSub, aes(x = padj, y = padj2)) + geom_point(cex = 0.2)
 ```
-The plot shows the BH-adjusted p-values computed from all p-values and then subset to `reported` (x-axis) versus the BH-adjusted p-values computed from the subset of `reported` p-values only, using the `n` argument of `p.adjust` (y-axis).
-```{r compareselected2}
-sum(padj_reported <= 0.1)  
-```
-```{r justcheck, echo=FALSE}
-stopifnot(max(abs(padj[reported] - padj_reported)) <= 0.001)
-```
-We see that we get exactly the same number of rejections as when we used the whole p-value vector as input. Now, the same approach can be used with IHW, but is slighly more complicated. In particular, we need to provide information about how many hypotheses were tested at each given value of the covariate. This means that there are two modifications to the standard IHW workflow: 
+The plot shows the BH-adjusted p-values computed from all p-values and then subset (x-axis) versus the BH-adjusted p-values computed from the subset of `reported` p-values only, using the `n` argument of `p.adjust` (y-axis).
 
- * If a numeric covariate is provided, IHW internally discretizes it and in this way bins the hypotheses into groups (strata). For the advanced functionality, this discretization has to be done manually by the user. In other words, the covariate provided by the user has to be a factor. For this, the convenience function `groups_by_filter` is provided, which returns a factor that stratifies a numeric covariate into a given number of groups with approximately the same number of hypotheses in each of the groups. This is a very simple function, largely equivalent to `cut(., quantile(., probs = seq(0, 1, length.out = nbins))`.
+```{r justcheck}
+stopifnot(with(simSub, max(abs(padj - padj2)) <= 0.001))
+```
+
+We see that the results agree. Now, the same approach can be used with IHW, but is slighly more complicated. In particular, we need to provide information about how many hypotheses were tested at each given value of the covariate. This means that there are two modifications to the standard IHW workflow: 
+
+ * If a numeric covariate is provided, IHW internally discretizes it and in this way bins the hypotheses into groups (strata). For the advanced functionality, this discretization has to be done beforehand by the user. In other words, the covariate provided by the user has to be a factor. For this, the convenience function `groups_by_filter` is provided, which returns a factor that stratifies a numeric covariate into a given number of groups with approximately the same number of hypotheses in each of the groups. This is a very simple function, largely equivalent to `cut(., quantile(., probs = seq(0, 1, length.out = nbins))`.
  * For the algorithm to work correctly, it is necessary to know the total number of hypotheses in each of the bins. However, if only a subset of p-values are reported, IHW obviously cannot know the number of hypotheses per bin automatically. Therefore, the user has to specify this information manually via the `m_groups` argument. (When there is only 1 bin, IHW reduces to BH and `m_groups` would be equivalent to the `n` argument of `p.adjust`.)
 
-For example, if the whole grouping factor is available (e.g., when it was generated by using `groups_by_filter` on the full vector of covariates), then one can apply the `table` function to it to calculate the number of hypotheses per bin. This is then used as an input for the `m_groups` argument. More elaborate strategies might be needed in more complicated cases, e.g., when the full vector of covariates does not fit into memory.
+For example, if the whole grouping factor is available (e.g., when it was generated by using `groups_by_filter` on the full vector of covariates), then one can apply the `table` function to it to calculate the number of hypotheses per bin. This is then used as an input for the `m_groups` argument. More elaborate strategies are needed in more complicated cases, e.g., when the full vector of covariates does not fit into memory.
 
-```{r}
+```{r m_groups}
 nbins <- 20
-sim$group <- groups_by_filter(sim$X, nbins)
+sim <- mutate(sim, group = groups_by_filter(X, nbins))
 m_groups  <- table(sim$group)
 ```
-Now we can subset our data frame to only keep low p-values and then apply `ihw` with the manually specified `m_groups`.
 
-```{r}
-sim_reported <- subset(sim, sim$pvalue <= reporting_threshold) 
-ihw_filt <- ihw(pvalue ~ group, data = sim_reported,
-                alpha = .1, m_groups = m_groups)
-rejections(ihw_filt)
+Now we can apply IHW to the data subset that results from only keeping low p-values (`reported` is `TRUE`), with the manually specified `m_groups`.
+
+```{r ihw2}
+ihwS <- ihw(p ~ group, alpha = 0.1, data = filter(sim, reported), m_groups = m_groups)
+ihwS
+```
+
+For comparison, let's also call IHW on the full dataset (in a real application, this would normally not be available). 
+
+```{r ihw12}
+ihwF <- ihw(p ~ group, alpha = 0.1, data = sim)
+```
+
+And we can compare whether the results agree:
+
+```{r compareihw12, fig.width = 3, fig.height = 3, out.width = "300px", warning = FALSE}
+qplot(adj_pvalues(ihwF)[sim$reported], adj_pvalues(ihwS), cex = I(0.2), xlim = c(0, 0.1), ylim = c(0, 0.1))
 ```
 
 # References
