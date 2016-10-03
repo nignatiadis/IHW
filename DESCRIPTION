@@ -1,6 +1,6 @@
 Package: IHW
 Title: Independent Hypothesis Weighting
-Version: 1.1.8
+Version: 1.1.9
 Authors@R: c(person("Nikos", "Ignatiadis", email = "nikos.ignatiadis01@gmail.com", role = c("aut", "cre")),
              person("Wolfgang", "Huber", role = "aut"))
 Description: Independent hypothesis weighting (IHW) is a multiple testing
@@ -23,6 +23,7 @@ Imports:
 Suggests:
     ggplot2,
     dplyr,
+    gridExtra,
     scales,
     DESeq2,
     airway,

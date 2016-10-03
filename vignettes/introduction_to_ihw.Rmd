@@ -316,10 +316,28 @@ For comparison, let's also call IHW on the full dataset (in a real application, 
 ihwF <- ihw(p ~ group, alpha = 0.1, data = sim)
 ```
 
-And we can compare whether the results agree:
+Now we can compare `ihwS` and `ihwF`. This is a little bit more subtle than above for the BH method, because
 
-```{r compareihw12, fig.width = 3, fig.height = 3, out.width = "300px", warning = FALSE}
-qplot(adj_pvalues(ihwF)[sim$reported], adj_pvalues(ihwS), cex = I(0.2), xlim = c(0, 0.1), ylim = c(0, 0.1))
+1) unlike BH, IHW also uses the information available in higher p-values to determine the weights (i.e. the Grenander estimator of the p-value distribution will be slighly different if you only use a subset of small p-values), and more importantly 
+
+2) because IHW involves "random" data splitting, which pans out differently when the set of hypotheses is different.    
+
+Modulo these two aspects, the results should be approximately the same, in terms of the weights curves and the final number of rejections.
+
+```{r compareihw1, fig.width = 8, fig.height = 3, out.width = "700px"}
+gridExtra::grid.arrange( 
+  plot(ihwS), 
+  plot(ihwF), 
+  ncol = 2) 
+c(rejections(ihwS),
+  rejections(ihwF))
+```
+
+We can also plot the weighted, BH-adjusted p-values against each other:
+
+```{r compareihw2, fig.width = 3, fig.height = 3, out.width = "300px", warning = FALSE}
+qplot(adj_pvalues(ihwF)[sim$reported], adj_pvalues(ihwS), cex = I(0.2), 
+      xlim = c(0, 0.1), ylim = c(0, 0.1)) + coord_fixed()
 ```
 
 # References
