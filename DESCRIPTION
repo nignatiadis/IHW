@@ -1,6 +1,6 @@
 Package: IHW
 Title: Independent Hypothesis Weighting
-Version: 1.2.0
+Version: 1.3.0
 Authors@R: c(person("Nikos", "Ignatiadis", email = "nikos.ignatiadis01@gmail.com", role = c("aut", "cre")),
              person("Wolfgang", "Huber", role = "aut"))
 Description: Independent hypothesis weighting (IHW) is a multiple testing
