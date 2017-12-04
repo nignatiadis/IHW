@@ -42,7 +42,9 @@ ihw <- function(...)
 #' @param lp_solver  Character ("lpsymphony" or "gurobi"). Internally, IHW solves a sequence of linear programs, which
 #'        can be solved with either of these solvers.
 #' @param adjustment_type Character ("BH" or "bonferroni") depending on whether you want to control FDR or FWER.
-#' @param censoring: Boolean, if True (not default) the IHWc procedure is run instead of IHW.
+#' @param null_proportion: Boolean, if True (default is False), a modified version of Storey's estimator
+#'        is used within each bin to estimate the proportion of null hypotheses.
+#' @param censoring: Boolean, if True (default is False) the IHWc procedure is run instead of IHW.
 #' @param censoring_level: Numeric, threshold for IHWc procedure, defaults to alpha.
 #' @param return_internal Returns a lower level representation of the output (only useful for debugging purposes).
 #' @param ... Arguments passed to internal functions.
@@ -83,7 +85,8 @@ ihw.default <- function(pvalues, covariates, alpha,
 						distrib_estimator = "grenander",
 						lp_solver="lpsymphony",
 						adjustment_type = "BH",
-						censoring = FALSE, 
+						null_proportion = FALSE,
+						censoring = FALSE,
 						censoring_level = alpha,
 						return_internal = FALSE,
 						...){
@@ -214,15 +217,16 @@ ihw.default <- function(pvalues, covariates, alpha,
 	} else if (nbins > 1) {
 		res <- ihw_internal(sorted_groups, sorted_pvalues, alpha, lambdas,
 						m_groups,
-						penalty=penalty,
-						quiet=quiet,
-						nfolds=nfolds,
-						nfolds_internal=nfolds_internal,
-						nsplits_internal=nsplits_internal,
-						seed=NULL,
+						penalty = penalty,
+						quiet = quiet,
+						nfolds = nfolds,
+						nfolds_internal = nfolds_internal,
+						nsplits_internal = nsplits_internal,
+						seed = NULL,
 						distrib_estimator = distrib_estimator,
-						lp_solver=lp_solver,
-						adjustment_type=adjustment_type,
+						lp_solver = lp_solver,
+						adjustment_type = adjustment_type,
+						null_proportion = null_proportion,
 						censoring = censoring,
 						censoring_level = censoring_level,
 						...)
@@ -280,6 +284,7 @@ ihw_internal <- function(sorted_groups, sorted_pvalues, alpha, lambdas,
 								distrib_estimator = "distrib_estimator",
 								lp_solver="lpsymphony",
 								adjustment_type="BH",
+								null_proportion = FALSE,
 								censoring = FALSE,
 								censoring_level = alpha,
 								debug_flag=FALSE,
@@ -388,6 +393,18 @@ ihw_internal <- function(sorted_groups, sorted_pvalues, alpha, lambdas,
 
 		sorted_weights[sorted_folds == i] <- res$ws[sorted_groups[sorted_folds==i]]
 		weight_matrix[,i] <- res$ws
+
+		if (null_proportion){
+			pi0_est <- weighted_storey_pi0(sorted_pvalues[sorted_folds==i],
+				                  sorted_weights[sorted_folds == i],
+				                  tau= censoring_level,
+				                  m=sum(m_groups_holdout_fold))
+
+			sorted_weights[sorted_folds == i] <- sorted_weights[sorted_folds == i]/pi0_est
+			weight_matrix[,i] <- weight_matrix[,i]/pi0_est
+
+		}
+
 	}
 
 	if (censoring){
