@@ -42,6 +42,8 @@ ihw <- function(...)
 #' @param lp_solver  Character ("lpsymphony" or "gurobi"). Internally, IHW solves a sequence of linear programs, which
 #'        can be solved with either of these solvers.
 #' @param adjustment_type Character ("BH" or "bonferroni") depending on whether you want to control FDR or FWER.
+#' @param censoring: Boolean, if True (not default) the IHWc procedure is run instead of IHW.
+#' @param censoring_level: Numeric, threshold for IHWc procedure, defaults to alpha.
 #' @param return_internal Returns a lower level representation of the output (only useful for debugging purposes).
 #' @param ... Arguments passed to internal functions.
 #'
@@ -81,7 +83,9 @@ ihw.default <- function(pvalues, covariates, alpha,
 						distrib_estimator = "grenander",
 						lp_solver="lpsymphony",
 						adjustment_type = "BH",
-						return_internal=FALSE,
+						censoring = FALSE, 
+						censoring_level = alpha,
+						return_internal = FALSE,
 						...){
 
 	# This function essentially wraps the lower level function ihw_internal
@@ -219,6 +223,8 @@ ihw.default <- function(pvalues, covariates, alpha,
 						distrib_estimator = distrib_estimator,
 						lp_solver=lp_solver,
 						adjustment_type=adjustment_type,
+						censoring = censoring,
+						censoring_level = censoring_level,
 						...)
 	}
 
@@ -274,10 +280,20 @@ ihw_internal <- function(sorted_groups, sorted_pvalues, alpha, lambdas,
 								distrib_estimator = "distrib_estimator",
 								lp_solver="lpsymphony",
 								adjustment_type="BH",
+								censoring = FALSE,
+								censoring_level = alpha,
 								debug_flag=FALSE,
 								...){
 
 	# TODO: check if lambdas are sorted the way I want them to
+	if (censoring){
+
+		# TODO: throw warning if lambda_seq is used with censoring.
+		below_censoring_idx <- sorted_pvalues <= censoring_level
+		censored_pvalues <- sorted_pvalues[below_censoring_idx]
+		# do the below to be safe, but we will do more refined strategy below
+		sorted_pvalues[below_censoring_idx] <- 0.0
+	}
 
 	m <- length(sorted_pvalues)
 	split_sorted_pvalues <- split(sorted_pvalues, sorted_groups)
@@ -316,6 +332,11 @@ ihw_internal <- function(sorted_groups, sorted_pvalues, alpha, lambdas,
 			filtered_sorted_groups <- sorted_groups[sorted_folds!=i]
 			filtered_sorted_pvalues <- sorted_pvalues[sorted_folds!=i]
 			filtered_split_sorted_pvalues <- split(filtered_sorted_pvalues, filtered_sorted_groups)
+
+			if (censoring){
+            	filtered_split_sorted_pvalues <- lapply(filtered_split_sorted_pvalues,
+            	                                        rand_cbum, censoring_level)
+            }
 
 			# TODO: add check to see if for common use case the first term is 0
 			m_groups_holdout_fold <- (m_groups-m_groups_available)/nfolds +
@@ -369,7 +390,16 @@ ihw_internal <- function(sorted_groups, sorted_pvalues, alpha, lambdas,
 		weight_matrix[,i] <- res$ws
 	}
 
+	if (censoring){
+		sorted_pvalues[below_censoring_idx] <- censored_pvalues
+	}
+
 	sorted_weighted_pvalues <- mydiv(sorted_pvalues, sorted_weights)
+
+	if (censoring){
+		sorted_weighted_pvalues[!below_censoring_idx] <- 1.0
+	}
+
 	sorted_adj_p <- p.adjust(sorted_weighted_pvalues, method = adjustment_type, n = sum(m_groups))
 	rjs   <- sum(sorted_adj_p <= alpha)
 	lst <- list(lambda=lambda, fold_lambdas=fold_lambdas, rjs=rjs, sorted_pvalues=sorted_pvalues,

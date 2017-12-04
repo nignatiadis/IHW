@@ -43,4 +43,3 @@ ihw.DESeqResults: IHW method dispatching on DESeqResults objects
 \seealso{
 ihw, ihwResult
 }
-

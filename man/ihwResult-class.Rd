@@ -2,41 +2,41 @@
 % Please edit documentation in R/ihw_class.R
 \docType{class}
 \name{ihwResult-class}
+\alias{ihwResult-class}
+\alias{ihwResult}
 \alias{adj_pvalues}
 \alias{adj_pvalues,ihwResult-method}
-\alias{alpha}
-\alias{alpha,ihwResult-method}
-\alias{as.data.frame,ihwResult-method}
-\alias{as.data.frame_ihwResult}
-\alias{covariate_type}
-\alias{covariate_type,ihwResult-method}
-\alias{covariates}
-\alias{covariates,ihwResult-method}
-\alias{groups_factor}
-\alias{groups_factor,ihwResult-method}
-\alias{ihwResult}
-\alias{ihwResult-class}
-\alias{m_groups}
-\alias{m_groups,ihwResult-method}
-\alias{nbins}
-\alias{nbins,ihwResult-method}
-\alias{nfolds}
-\alias{nfolds,ihwResult-method}
-\alias{nrow,ihwResult-method}
-\alias{pvalues}
-\alias{pvalues,ihwResult-method}
-\alias{regularization_term}
-\alias{regularization_term,ihwResult-method}
-\alias{rejected_hypotheses}
-\alias{rejected_hypotheses,ihwResult-method}
-\alias{rejections}
-\alias{rejections,ihwResult-method}
-\alias{show,ihwResult-method}
+\alias{weights,ihwResult-method}
 \alias{thresholds}
 \alias{thresholds,ihwResult-method}
+\alias{pvalues}
+\alias{pvalues,ihwResult-method}
 \alias{weighted_pvalues}
 \alias{weighted_pvalues,ihwResult-method}
-\alias{weights,ihwResult-method}
+\alias{covariates}
+\alias{covariates,ihwResult-method}
+\alias{covariate_type}
+\alias{covariate_type,ihwResult-method}
+\alias{groups_factor}
+\alias{groups_factor,ihwResult-method}
+\alias{nfolds}
+\alias{nfolds,ihwResult-method}
+\alias{nbins}
+\alias{nbins,ihwResult-method}
+\alias{alpha}
+\alias{alpha,ihwResult-method}
+\alias{rejections}
+\alias{rejections,ihwResult-method}
+\alias{rejected_hypotheses}
+\alias{rejected_hypotheses,ihwResult-method}
+\alias{regularization_term}
+\alias{regularization_term,ihwResult-method}
+\alias{m_groups}
+\alias{m_groups,ihwResult-method}
+\alias{as.data.frame_ihwResult}
+\alias{as.data.frame,ihwResult-method}
+\alias{nrow,ihwResult-method}
+\alias{show,ihwResult-method}
 \title{An S4 class to represent the ihw output.}
 \usage{
 adj_pvalues(object)
@@ -174,6 +174,7 @@ An S4 class to represent the ihw output.
 
 \item \code{show}: Convenience method to show ihwResult object
 }}
+
 \section{Slots}{
 
 \describe{
@@ -201,6 +202,7 @@ An S4 class to represent the ihw output.
 
 \item{\code{solver_information}}{A list, solver specific output, e.g. were all subproblems solved to optimality? (Currently empty list)}
 }}
+
 \examples{
 
 save.seed <- .Random.seed; set.seed(1)
@@ -218,4 +220,3 @@ colnames(as.data.frame(ihw_res))
 \seealso{
 ihw, plot,ihwResult-method
 }
-

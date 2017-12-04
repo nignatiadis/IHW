@@ -28,4 +28,3 @@ increasing value of the covariate
  groups <- groups_by_filter(covariates,10)
  table(groups)
 }
-
