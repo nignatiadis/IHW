@@ -25,6 +25,7 @@
 #'
 #' @export
 #' @aliases plot,ihwResult-method
+
 setMethod("plot", signature="ihwResult",
 	function(x, x_axis = c(weights = "group", decisionboundary = "covariate")[what], what = "weights", scale = covariate_type(x)) {
 	  

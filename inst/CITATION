@@ -2,14 +2,25 @@ citEntry(entry="article",
          title = "Data-driven hypothesis weighting increases detection power in genome-scale multiple testing",
          author = personList( as.person("Nikolaos Ignatiadis"),
                               as.person("Bernd Klaus"),
-                              as.person("Judith B. Zaugg"),
+                              as.person("Judith Zaugg"),
                               as.person("Wolfgang Huber")),
          year = 2016,
-         journal = "Nature methods",
+         journal = "Nature Methods",
          doi = "10.1038/nmeth.3885",
-         url = "http://dx.doi.org/10.1038/nmeth.3885",
          textVersion =
-         paste("Nikolaos Ignatiadis, Bernd Klaus, Judith B. Zaugg and Wolfgang Huber (2016):",
-               "Data-driven hypothesis weighting increases detection power in genome-scale multiple testing",
-               "Nature methods" ) )
+         paste("Nikolaos Ignatiadis, Bernd Klaus, Judith Zaugg and Wolfgang Huber (2016):",
+               "Data-driven hypothesis weighting increases detection power in genome-scale multiple testing.",
+               "Nature Methods 13:577, doi: 10.1038/nmeth.3885"))
+
+citEntry(entry="article",
+         title = "Covariate-powered weighted multiple testing with false discovery rate control",
+         author = personList( as.person("Nikolaos Ignatiadis"),
+                              as.person("Wolfgang Huber")),
+         year = 2017,
+         journal = "arXiv",
+         doi = "arXiv:1701.05179",
+         textVersion =
+         paste("Nikolaos Ignatiadis and Wolfgang Huber (2016):",
+               "Covariate-powered weighted multiple testing with false discovery rate control.",
+               "arXiv:1701.05179"))
 

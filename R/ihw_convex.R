@@ -35,8 +35,8 @@ ihw <- function(...)
 #'              parameter selection but makes ihw a lot slower.
 #' @param lambdas  Numeric vector which defines the grid of possible regularization parameters.
 #'				Use "auto" for automatic selection.
-#' @param seed Integer or NULL. Split of hypotheses into folds is done randomly. To have output of the function be reproducible, 
-#'	we set a seed. Use NULL if you don't want a seed.
+#' @param seed Integer or NULL. Split of hypotheses into folds is done randomly. To have the output of the function be reproducible, 
+#'	the seed of the random number generator is set to this value at the start of the function. Use NULL if you don't want to set the seed.
 #' @param distrib_estimator  Character ("grenander" or "ECDF"). Only use this if you know what you are doing. ECDF with nfolds > 1
 #'              or lp_solver == "lpsymphony" will in general be excessively slow, except for very small problems.
 #' @param lp_solver  Character ("lpsymphony" or "gurobi"). Internally, IHW solves a sequence of linear programs, which

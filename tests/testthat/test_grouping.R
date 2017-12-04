@@ -13,6 +13,4 @@ test_that("number of elements in each group should differ by at most 1", {
     x3 <- c(rep(0,10), runif(100))
     # b3 <- cut(x3, quantile(x, probs=seq(0, 1, length.out=8+1))) #NAs introduced
     expect_uniform_groups(groups_by_filter(x3, 8))
-
-
 })
