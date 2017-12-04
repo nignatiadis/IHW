@@ -42,10 +42,10 @@ ihw <- function(...)
 #' @param lp_solver  Character ("lpsymphony" or "gurobi"). Internally, IHW solves a sequence of linear programs, which
 #'        can be solved with either of these solvers.
 #' @param adjustment_type Character ("BH" or "bonferroni") depending on whether you want to control FDR or FWER.
-#' @param null_proportion: Boolean, if True (default is False), a modified version of Storey's estimator
+#' @param null_proportion Boolean, if True (default is False), a modified version of Storey's estimator
 #'        is used within each bin to estimate the proportion of null hypotheses.
-#' @param censoring: Boolean, if True (default is False) the IHWc procedure is run instead of IHW.
-#' @param censoring_level: Numeric, threshold for IHWc procedure, defaults to alpha.
+#' @param censoring Boolean, if True (default is False) the IHWc procedure is run instead of IHW.
+#' @param censoring_level Numeric, threshold for IHWc procedure, defaults to alpha.
 #' @param return_internal Returns a lower level representation of the output (only useful for debugging purposes).
 #' @param ... Arguments passed to internal functions.
 #'
