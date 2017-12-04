@@ -59,6 +59,13 @@ can be solved with either of these solvers.}
 
 \item{adjustment_type}{Character ("BH" or "bonferroni") depending on whether you want to control FDR or FWER.}
 
+\item{null_proportion}{Boolean, if True (default is False), a modified version of Storey's estimator
+is used within each bin to estimate the proportion of null hypotheses.}
+
+\item{censoring}{Boolean, if True (default is False) the IHWc procedure is run instead of IHW.}
+
+\item{censoring_level}{Numeric, threshold for IHWc procedure, defaults to alpha.}
+
 \item{return_internal}{Returns a lower level representation of the output (only useful for debugging purposes).}
 
 \item{...}{Arguments passed to internal functions.}
@@ -66,13 +73,6 @@ can be solved with either of these solvers.}
 \item{formula}{\code{\link{formula}}, specified in the form pvalue~covariate (only 1D covariate supported)}
 
 \item{data}{data.frame from which the variables in formula should be taken}
-
-\item{null_proportion:}{Boolean, if True (default is False), a modified version of Storey's estimator
-is used within each bin to estimate the proportion of null hypotheses.}
-
-\item{censoring:}{Boolean, if True (default is False) the IHWc procedure is run instead of IHW.}
-
-\item{censoring_level:}{Numeric, threshold for IHWc procedure, defaults to alpha.}
 }
 \value{
 A ihwResult object.
