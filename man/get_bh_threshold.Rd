@@ -28,4 +28,3 @@ t_BH  <- get_bh_threshold(pvalues, 0.1) #get rejection threshold at alpha=0.1
 all((pvalues <= t_BH) == (adj_pvalues <= 0.1)) #equivalence of two formulations
 
 }
-
