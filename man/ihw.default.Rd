@@ -10,8 +10,8 @@
   nbins = "auto", m_groups = NULL, quiet = TRUE, nfolds = 5L,
   nfolds_internal = 5L, nsplits_internal = 1L, lambdas = "auto",
   seed = 1L, distrib_estimator = "grenander", lp_solver = "lpsymphony",
-  adjustment_type = "BH", censoring = FALSE, censoring_level = alpha,
-  return_internal = FALSE, ...)
+  adjustment_type = "BH", null_proportion = FALSE, censoring = FALSE,
+  censoring_level = alpha, return_internal = FALSE, ...)
 
 \method{ihw}{formula}(formula, data = parent.frame(), ...)
 }
@@ -67,7 +67,10 @@ can be solved with either of these solvers.}
 
 \item{data}{data.frame from which the variables in formula should be taken}
 
-\item{censoring:}{Boolean, if True (not default) the IHWc procedure is run instead of IHW.}
+\item{null_proportion:}{Boolean, if True (default is False), a modified version of Storey's estimator
+is used within each bin to estimate the proportion of null hypotheses.}
+
+\item{censoring:}{Boolean, if True (default is False) the IHWc procedure is run instead of IHW.}
 
 \item{censoring_level:}{Numeric, threshold for IHWc procedure, defaults to alpha.}
 }
