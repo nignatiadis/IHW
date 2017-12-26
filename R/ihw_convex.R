@@ -357,13 +357,13 @@ ihw_internal <- function(sorted_groups, sorted_pvalues, alpha, lambdas,
 				lambda <- lambdas[k]
 				for (l in 1:nsplits_internal){
 
-					rjs[k,l] <- ihw_internal(filtered_sorted_groups, filtered_sorted_pvalues, alpha, 
+					rjs[k,l] <- ihw_internal(filtered_sorted_groups, filtered_sorted_pvalues, alpha,
 											lambda, m_groups_other_folds,
 									    	seed=NULL, quiet=quiet,
 									    	nfolds=nfolds_internal,
 									    	distrib_estimator = distrib_estimator,
 									    	lp_solver=lp_solver,
-									    	adjustment_type=adjustment_type)$rjs
+									    	adjustment_type=adjustment_type,...)$rjs
 				}
 				if (debug_flag==TRUE){
 					rjs_path_mat[i,k] <- rjs[k] #only works for nsplits_internal currently
@@ -508,7 +508,7 @@ ihw.DESeqResults <- function(deseq_res, filter="baseMean",
 #' @importFrom lpsymphony lpsymphony_solve_LP
 ihw_convex <- function(split_sorted_pvalues, alpha, m_groups, m_groups_grenander,
 		penalty="total variation", lambda=Inf, lp_solver="gurobi",
-		adjustment_type= "BH", quiet=quiet){
+		adjustment_type= "BH", grenander_binsize = 1, quiet=quiet){
 
 	# m_groups used for balancing (weight budget)
 	# m_groups_grenander (used for grenander estimator)
@@ -538,6 +538,7 @@ ihw_convex <- function(split_sorted_pvalues, alpha, m_groups, m_groups_grenander
 	grenander_list <- mapply(presorted_grenander,
 		                    split_sorted_pvalues,
 		                    m_groups_grenander,
+		                    grenander_binsize = grenander_binsize,
 		                    quiet=quiet,
 		                    SIMPLIFY=FALSE)
 
@@ -687,6 +688,7 @@ ihw_convex <- function(split_sorted_pvalues, alpha, m_groups, m_groups_grenander
 
 #' @importFrom fdrtool gcmlcm
 presorted_grenander <- function(sorted_pvalues, m_total=length(sorted_pvalues),
+							grenander_binsize = 1,
 							quiet=TRUE){
 
   	unique_pvalues <- unique(sorted_pvalues)
@@ -702,6 +704,13 @@ presorted_grenander <- function(sorted_pvalues, m_total=length(sorted_pvalues),
   	if (max(unique_pvalues) < 1){
   		unique_pvalues <- c(unique_pvalues,1)
   		ecdf_values    <- c(ecdf_values,1)
+  	}
+
+  	if (grenander_binsize != 1){
+  		nmax = length(unique_pvalues)
+  		idx_thin <- c(seq(1, nmax-1, by=grenander_binsize), nmax)
+  		unique_pvalues <- unique_pvalues[idx_thin]
+  		ecdf_values <- ecdf_values[idx_thin]
   	}
 
   	ll <- fdrtool::gcmlcm(unique_pvalues, ecdf_values, type="lcm")
