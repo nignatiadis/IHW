@@ -7,11 +7,12 @@
 \title{ihw: Main function for Independent Hypothesis Weighting}
 \usage{
 \method{ihw}{default}(pvalues, covariates, alpha, covariate_type = "ordinal",
-  nbins = "auto", m_groups = NULL, quiet = TRUE, nfolds = 5L,
-  nfolds_internal = 5L, nsplits_internal = 1L, lambdas = "auto",
-  seed = 1L, distrib_estimator = "grenander", lp_solver = "lpsymphony",
-  adjustment_type = "BH", null_proportion = FALSE, censoring = FALSE,
-  censoring_level = alpha, return_internal = FALSE, ...)
+  nbins = "auto", m_groups = NULL, folds = NULL, quiet = TRUE,
+  nfolds = 5L, nfolds_internal = 5L, nsplits_internal = 1L,
+  lambdas = "auto", seed = 1L, distrib_estimator = "grenander",
+  lp_solver = "lpsymphony", adjustment_type = "BH",
+  null_proportion = FALSE, censoring = FALSE, censoring_level = alpha,
+  return_internal = FALSE, ...)
 
 \method{ihw}{formula}(formula, data = parent.frame(), ...)
 }
@@ -34,6 +35,8 @@ each group (stratum). This argument needs to be given when the complete vector o
 not available, but only p-values below a given threshold, for example because of memory reasons.
 See the vignette for additional details and an example of how this principle can be applied with
 numerical covariates.}
+
+\item{folds}{Integer vector or NULL. Pre-specify assignment of hypotheses into folds.}
 
 \item{quiet}{Boolean, if False a lot of messages are printed during the fitting stages.}
 

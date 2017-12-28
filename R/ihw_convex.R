@@ -27,6 +27,7 @@ ihw <- function(...)
 #'               not available, but only p-values below a given threshold, for example because of memory reasons.
 #'               See the vignette for additional details and an example of how this principle can be applied with
 #'               numerical covariates.
+#' @param folds  Integer vector or NULL. Pre-specify assignment of hypotheses into folds.
 #' @param quiet  Boolean, if False a lot of messages are printed during the fitting stages.
 #' @param nfolds Number of folds into which the p-values will be split for the pre-validation procedure
 #' @param nfolds_internal  Within each fold, a second  (nested) layer of cross-validation can be conducted to choose a good
@@ -76,6 +77,7 @@ ihw.default <- function(pvalues, covariates, alpha,
 						covariate_type = "ordinal",
 						nbins = "auto",
 						m_groups = NULL,
+						folds = NULL,
 						quiet =TRUE ,
 						nfolds = 5L,
 						nfolds_internal = 5L,
@@ -105,8 +107,14 @@ ihw.default <- function(pvalues, covariates, alpha,
 		stop("For Bonferroni-like FWER adjustment currently only the grenander estimator is supported.")
 	}
 
-	nfolds <- as.integer(nfolds)
+	if (is.null(folds)){
+		nfolds <- as.integer(nfolds)
+	} else {
+		nfolds <- length(unique(folds))
+	}
+
 	nfolds_internal <- as.integer(nfolds_internal)
+
 
 	if (nfolds==1){
 		message("Using only 1 fold! Only use this if you want to learn the weights, but NEVER for testing!")
@@ -178,6 +186,12 @@ ihw.default <- function(pvalues, covariates, alpha,
 	sorted_groups <- groups[order_pvalues]
 	sorted_pvalues <- pvalues[order_pvalues]
 
+	if (!is.null(folds)){
+		sorted_folds <- folds[order_pvalues]
+	} else {
+		sorted_folds <- NULL
+	}
+
 	if (is.null(m_groups)) {
 		m_groups <- table(sorted_groups)
 	} else {
@@ -219,6 +233,7 @@ ihw.default <- function(pvalues, covariates, alpha,
 						m_groups,
 						penalty = penalty,
 						quiet = quiet,
+						sorted_folds = sorted_folds,
 						nfolds = nfolds,
 						nfolds_internal = nfolds_internal,
 						nsplits_internal = nsplits_internal,
@@ -278,6 +293,7 @@ ihw_internal <- function(sorted_groups, sorted_pvalues, alpha, lambdas,
 							    penalty="total variation",
 							    seed=NULL,
 								quiet=TRUE,
+								sorted_folds=NULL,
 								nfolds = 10L,
 								nfolds_internal = nfolds,
 								nsplits_internal = 1L,
@@ -289,6 +305,8 @@ ihw_internal <- function(sorted_groups, sorted_pvalues, alpha, lambdas,
 								censoring_level = alpha,
 								debug_flag=FALSE,
 								...){
+
+	folds_prespecified <- !is.null(sorted_folds)
 
 	# TODO: check if lambdas are sorted the way I want them to
 	if (censoring){
@@ -313,7 +331,9 @@ ihw_internal <- function(sorted_groups, sorted_pvalues, alpha, lambdas,
   		set.seed(as.integer(seed)) #seed
 	}
 
-	sorted_folds <- sample(1:nfolds, m, replace = TRUE)
+	if (!folds_prespecified){
+		sorted_folds <- sample(1:nfolds, m, replace = TRUE)
+	}
 
 	sorted_weights <- rep(NA, m)
 	fold_lambdas <- rep(NA, nfolds)
@@ -343,10 +363,15 @@ ihw_internal <- function(sorted_groups, sorted_pvalues, alpha, lambdas,
             	                                        rand_cbum, censoring_level)
             }
 
-			# TODO: add check to see if for common use case the first term is 0
-			m_groups_holdout_fold <- (m_groups-m_groups_available)/nfolds +
+            if (!folds_prespecified){
+				# TODO: add check to see if for common use case the first term is 0
+				m_groups_holdout_fold <- (m_groups-m_groups_available)/nfolds +
 						 m_groups_available - sapply(filtered_split_sorted_pvalues, length)
-			m_groups_other_folds <- m_groups - m_groups_holdout_fold
+				m_groups_other_folds <- m_groups - m_groups_holdout_fold
+			} else {
+				m_groups_holdout_fold <- m_groups[,i]
+				m_groups_other_folds <- rowSums(m_groups[-i,drop=FALSE])
+			}
 		}
 		# within each fold do iterations to also find lambda
 

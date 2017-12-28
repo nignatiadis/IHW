@@ -9,6 +9,7 @@ warnings_are_errors: true
 
 r_github_packages:
   - jimhester/covr
+  - cran/pi0
 bioc_packages:
   - BiocCheck
 
