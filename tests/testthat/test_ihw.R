@@ -130,3 +130,17 @@ expect_equal(rejections(ihw_res1_single_fold), rejections(ihw_res1_filtered_sing
 t1 <- thresholds(ihw_res1_filtered_single_fold, levels_only=T)
 t2 <- thresholds(ihw_res1_single_fold, levels_only=T)
 expect_equal(t1,t2)
+
+#-------------------------------------------------------------------
+#--------- Check if manual definition of folds works ---------------
+#-------------------------------------------------------------------
+ihw_res_lambda <- ihw(sim$pvalue, sim$filterstat, .1, nbins=10, lambda=10)
+folds <- ihw_res_lambda@df$fold
+m_groups_tbl <- table(groups_factor(ihw_res_lambda), folds)
+ihw_res_lambda_folds <- ihw(sim$pvalue, groups_factor(ihw_res_tmp), .1, m_groups= m_groups_tbl,
+                     folds=folds, lambda=10)
+ihw_res_lambda_folds2 <- ihw(sim$pvalue, groups_factor(ihw_res_tmp), .1,
+                     folds=folds, lambda=10)
+expect_equal(rejections(ihw_res_lambda), rejections(ihw_res_lambda_folds))
+expect_equal(weights(ihw_res_lambda_folds), weights(ihw_res_lambda_folds2))
+
