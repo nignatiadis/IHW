@@ -193,13 +193,24 @@ ihw.default <- function(pvalues, covariates, alpha,
 	}
 
 	if (is.null(m_groups)) {
-		m_groups <- table(sorted_groups)
+		if (is.null(folds)){
+			m_groups <- table(sorted_groups)
+		} else {
+			m_groups <- table(sorted_groups, sorted_folds)
+		}
 	} else {
 		# TODO: also check if m_groups entered by user is plausible based on observed m_groups and max p_value
 	}
 
-	if (length(group_levels) != length(m_groups)){
-		stop("Number of unique levels should be equal to length of m_groups.")
+    #--- check if m_groups is correctly specified----------------------
+    if (is.null(folds)){
+		if (length(group_levels) != length(m_groups)){
+			stop("Number of unique levels should be equal to length of m_groups.")
+		}
+	} else {
+		if (any(dim(m_groups) != c(length(group_levels), nfolds))){
+			stop("m_groups should be of dimension nbins*nfolds")
+		}
 	}
 	# once we have groups, check whether they include enough p-values
 	if (nbins > 1 & any(m_groups < 1000)){
@@ -370,7 +381,7 @@ ihw_internal <- function(sorted_groups, sorted_pvalues, alpha, lambdas,
 				m_groups_other_folds <- m_groups - m_groups_holdout_fold
 			} else {
 				m_groups_holdout_fold <- m_groups[,i]
-				m_groups_other_folds <- rowSums(m_groups[-i,drop=FALSE])
+				m_groups_other_folds <- rowSums(m_groups[,-i,drop=FALSE])
 			}
 		}
 		# within each fold do iterations to also find lambda
