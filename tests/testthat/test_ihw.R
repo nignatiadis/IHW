@@ -137,9 +137,9 @@ expect_equal(t1,t2)
 ihw_res_lambda <- ihw(sim$pvalue, sim$filterstat, .1, nbins=10, lambda=10)
 folds <- ihw_res_lambda@df$fold
 m_groups_tbl <- table(groups_factor(ihw_res_lambda), folds)
-ihw_res_lambda_folds <- ihw(sim$pvalue, groups_factor(ihw_res_tmp), .1, m_groups= m_groups_tbl,
+ihw_res_lambda_folds <- ihw(sim$pvalue, groups_factor(ihw_res_lambda), .1, m_groups= m_groups_tbl,
                      folds=folds, lambda=10)
-ihw_res_lambda_folds2 <- ihw(sim$pvalue, groups_factor(ihw_res_tmp), .1,
+ihw_res_lambda_folds2 <- ihw(sim$pvalue, groups_factor(ihw_res_lambda), .1,
                      folds=folds, lambda=10)
 expect_equal(rejections(ihw_res_lambda), rejections(ihw_res_lambda_folds))
 expect_equal(weights(ihw_res_lambda_folds), weights(ihw_res_lambda_folds2))
