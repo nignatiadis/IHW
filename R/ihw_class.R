@@ -94,7 +94,7 @@ setMethod("weights", signature(object="ihwResult"),
 
 thresholds_ihwResult <-function(object, levels_only = FALSE){
   t <- get_bh_threshold(na.exclude(weighted_pvalues(object)), alpha(object),
-                        mtests = sum(m_groups(object)))
+                        mtests = sum(as.numeric(m_groups(object))))
   t*weights(object, levels_only = levels_only)
 }
 
