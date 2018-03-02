@@ -113,7 +113,6 @@ fill_nas_reorder <- function (reduced_vector, nna, order){
   full_vector
 }
 
-#' @importFrom pi0 CBUM
 rand_cbum <- function(pvals, tau=0.1){
   cbum_fit <- CBUM(pvals, start.pi0=0.5, thresh.censor=tau, 
                    eps=1e-5, niter=Inf, verbose=FALSE)
