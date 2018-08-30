@@ -20,6 +20,7 @@ devtools::install_github("nignatiadis/IHW")
 In addition, these packages will be available in the next release of Bioconductor. Both [lpsymphony](http://bioconductor.org/packages/3.3/bioc/html/lpsymphony.html) and [IHW](https://www.bioconductor.org/packages/devel/bioc/html/IHW.html) are also already available on the development branch of Bioconductor. Thus IHW can also be installed from there as follows:
 
 ```R
-source("https://bioconductor.org/biocLite.R")
-biocLite("IHW")
+if (!requireNamespace("BiocManager", quietly=TRUE))
+    install.packages("BiocManager")
+BiocManager::install("IHW")
 ```
