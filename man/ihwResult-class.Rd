@@ -99,8 +99,7 @@ m_groups(object)
 
 as.data.frame_ihwResult(x, row.names = NULL, optional = FALSE, ...)
 
-\S4method{as.data.frame}{ihwResult}(x, row.names = NULL, optional = FALSE,
-  ...)
+\S4method{as.data.frame}{ihwResult}(x, row.names = NULL, optional = FALSE, ...)
 
 \S4method{nrow}{ihwResult}(x)
 
@@ -207,7 +206,8 @@ An S4 class to represent the ihw output.
 
 save.seed <- .Random.seed; set.seed(1)
 X   <- runif(n = 20000, min = 0.5, max = 4.5)       # Covariate
-H   <- rbinom(n = length(X), size = 1, prob = 0.1)  # Is the null hypothesis (mean=0) true or false ?
+# Is the null hypothesis (mean=0) true or false ?
+H   <- rbinom(n = length(X), size = 1, prob = 0.1)  
 Z   <- rnorm(n = length(X), mean = H * X)           # Z-score
 .Random.seed <- save.seed
 

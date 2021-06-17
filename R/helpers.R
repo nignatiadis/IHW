@@ -112,28 +112,3 @@ fill_nas_reorder <- function (reduced_vector, nna, order){
   }
   full_vector
 }
-
-rand_cbum <- function(pvals, tau=0.1){
-  cbum_fit <- CBUM(pvals, start.pi0=0.5, thresh.censor=tau, 
-                   eps=1e-5, niter=Inf, verbose=FALSE)
-
-
-  alpha <- attr(cbum_fit, "alpha")
-  tau <- attr(cbum_fit, "thresh.censor")
-  pi0 <- as.numeric(cbum_fit)
-
-  gamma <- (pi0 - alpha)/(1-alpha) #check sign etc?
-  n <- sum(pvals <= tau)
-
-  Hs <- 1-rbinom(n, 1, gamma) 
-  sim_pvals <- runif(n)
-
-  sim_pvals[Hs==0] <- sim_pvals[Hs==0]*tau
-  # inverse transform sampling
-  if (sum(Hs) > 0){
-    sim_pvals[Hs==1] <- qbeta(sim_pvals[Hs==1]*pbeta(tau, alpha,1) , alpha, 1)
-  }
-
-  pvals[pvals <= tau] <- sort(sim_pvals)
-  pvals
-}

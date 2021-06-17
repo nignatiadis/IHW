@@ -6,13 +6,28 @@
 \alias{ihw.formula}
 \title{ihw: Main function for Independent Hypothesis Weighting}
 \usage{
-\method{ihw}{default}(pvalues, covariates, alpha, covariate_type = "ordinal",
-  nbins = "auto", m_groups = NULL, folds = NULL, quiet = TRUE,
-  nfolds = 5L, nfolds_internal = 5L, nsplits_internal = 1L,
-  lambdas = "auto", seed = 1L, distrib_estimator = "grenander",
-  lp_solver = "lpsymphony", adjustment_type = "BH", censoring = FALSE,
-  censoring_level = alpha, null_proportion = FALSE,
-  null_proportion_level = censoring_level, return_internal = FALSE, ...)
+\method{ihw}{default}(
+  pvalues,
+  covariates,
+  alpha,
+  covariate_type = "ordinal",
+  nbins = "auto",
+  m_groups = NULL,
+  folds = NULL,
+  quiet = TRUE,
+  nfolds = 5L,
+  nfolds_internal = 5L,
+  nsplits_internal = 1L,
+  lambdas = "auto",
+  seed = 1L,
+  distrib_estimator = "grenander",
+  lp_solver = "lpsymphony",
+  adjustment_type = "BH",
+  null_proportion = FALSE,
+  null_proportion_level = 0.5,
+  return_internal = FALSE,
+  ...
+)
 
 \method{ihw}{formula}(formula, data = parent.frame(), ...)
 }
@@ -62,14 +77,10 @@ can be solved with either of these solvers.}
 
 \item{adjustment_type}{Character ("BH" or "bonferroni") depending on whether you want to control FDR or FWER.}
 
-\item{censoring}{Boolean, if True (default is False) the IHWc procedure is run instead of IHW.}
-
-\item{censoring_level}{Numeric, threshold for IHWc procedure, defaults to alpha.}
-
 \item{null_proportion}{Boolean, if True (default is False), a modified version of Storey's estimator
 is used within each bin to estimate the proportion of null hypotheses.}
 
-\item{null_proportion_level}{Numeric, threshold for Storey's pi0 estimation procedure, defaults to censoring_level}
+\item{null_proportion_level}{Numeric, threshold for Storey's pi0 estimation procedure, defaults to 0.5}
 
 \item{return_internal}{Returns a lower level representation of the output (only useful for debugging purposes).}
 

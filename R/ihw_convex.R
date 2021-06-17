@@ -43,11 +43,9 @@ ihw <- function(...)
 #' @param lp_solver  Character ("lpsymphony" or "gurobi"). Internally, IHW solves a sequence of linear programs, which
 #'        can be solved with either of these solvers.
 #' @param adjustment_type Character ("BH" or "bonferroni") depending on whether you want to control FDR or FWER.
-#' @param censoring Boolean, if True (default is False) the IHWc procedure is run instead of IHW.
-#' @param censoring_level Numeric, threshold for IHWc procedure, defaults to alpha.
 #' @param null_proportion Boolean, if True (default is False), a modified version of Storey's estimator
 #'        is used within each bin to estimate the proportion of null hypotheses.
-#' @param null_proportion_level Numeric, threshold for Storey's pi0 estimation procedure, defaults to censoring_level
+#' @param null_proportion_level Numeric, threshold for Storey's pi0 estimation procedure, defaults to 0.5
 #' @param return_internal Returns a lower level representation of the output (only useful for debugging purposes).
 #' @param ... Arguments passed to internal functions.
 #'
@@ -88,10 +86,8 @@ ihw.default <- function(pvalues, covariates, alpha,
 						distrib_estimator = "grenander",
 						lp_solver="lpsymphony",
 						adjustment_type = "BH",
-						censoring = FALSE,
-						censoring_level = alpha,
 						null_proportion = FALSE,
-						null_proportion_level = censoring_level,
+						null_proportion_level = 0.5,
 						return_internal = FALSE,
 						...){
 
@@ -254,8 +250,6 @@ ihw.default <- function(pvalues, covariates, alpha,
 						distrib_estimator = distrib_estimator,
 						lp_solver = lp_solver,
 						adjustment_type = adjustment_type,
-						censoring = censoring,
-						censoring_level = censoring_level,
 						null_proportion = null_proportion,
 						null_proportion_level = null_proportion_level,
 						...)
@@ -314,24 +308,12 @@ ihw_internal <- function(sorted_groups, sorted_pvalues, alpha, lambdas,
 								distrib_estimator = "distrib_estimator",
 								lp_solver="lpsymphony",
 								adjustment_type="BH",
-								censoring = FALSE,
-								censoring_level = alpha,
 								null_proportion = FALSE,
-								null_proportion_level = censoring_level,
+								null_proportion_level = 0.5,
 								debug_flag=FALSE,
 								...){
 
 	folds_prespecified <- !is.null(sorted_folds)
-
-	# TODO: check if lambdas are sorted the way I want them to
-	if (censoring){
-
-		# TODO: throw warning if lambda_seq is used with censoring.
-		below_censoring_idx <- sorted_pvalues <= censoring_level
-		censored_pvalues <- sorted_pvalues[below_censoring_idx]
-		# do the below to be safe, but we will do more refined strategy below
-		sorted_pvalues[below_censoring_idx] <- 0.0
-	}
 
 	m <- length(sorted_pvalues)
 	split_sorted_pvalues <- split(sorted_pvalues, sorted_groups)
@@ -373,12 +355,7 @@ ihw_internal <- function(sorted_groups, sorted_pvalues, alpha, lambdas,
 			filtered_sorted_pvalues <- sorted_pvalues[sorted_folds!=i]
 			filtered_split_sorted_pvalues <- split(filtered_sorted_pvalues, filtered_sorted_groups)
 
-			if (censoring){
-            	filtered_split_sorted_pvalues <- lapply(filtered_split_sorted_pvalues,
-            	                                        rand_cbum, censoring_level)
-            }
-
-            if (!folds_prespecified){
+      if (!folds_prespecified){
 				# TODO: add check to see if for common use case the first term is 0
 				m_groups_holdout_fold <- (m_groups-m_groups_available)/nfolds +
 						 m_groups_available - sapply(filtered_split_sorted_pvalues, length)
@@ -447,15 +424,8 @@ ihw_internal <- function(sorted_groups, sorted_pvalues, alpha, lambdas,
 
 	}
 
-	if (censoring){
-		sorted_pvalues[below_censoring_idx] <- censored_pvalues
-	}
-
 	sorted_weighted_pvalues <- mydiv(sorted_pvalues, sorted_weights)
 
-	if (censoring){
-		sorted_weighted_pvalues[!below_censoring_idx] <- 1.0
-	}
 
 	sorted_adj_p <- p.adjust(sorted_weighted_pvalues, method = adjustment_type, n = sum(m_groups))
 	rjs   <- sum(sorted_adj_p <= alpha)

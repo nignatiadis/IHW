@@ -4,8 +4,7 @@
 \alias{ihw.DESeqResults}
 \title{ihw.DESeqResults: IHW method dispatching on DESeqResults objects}
 \usage{
-\method{ihw}{DESeqResults}(deseq_res, filter = "baseMean", alpha = 0.1,
-  adjustment_type = "BH", ...)
+\method{ihw}{DESeqResults}(deseq_res, filter = "baseMean", alpha = 0.1, adjustment_type = "BH", ...)
 }
 \arguments{
 \item{deseq_res}{"DESeqResults" object}
