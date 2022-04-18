@@ -200,6 +200,14 @@ An S4 class to represent the ihw output.
 \item{\code{reg_path_information}}{A data.frame, information about the whole regularization path. (Currently not used, thus empty)}
 
 \item{\code{solver_information}}{A list, solver specific output, e.g. were all subproblems solved to optimality? (Currently empty list)}
+
+\item{\code{stratification_method}}{Character, "quantiles" or "forest" or "none"}
+
+\item{\code{weight_matrices_forest}}{list of list of vectors, equivalent of weights, but for stratification method forest}
+
+\item{\code{ntaus}}{Integer, number of censoring thresholds tau to be considered for stratification method "forest"}
+
+\item{\code{ntrees}}{Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}} for stratification method "forest"}
 }}
 
 \examples{

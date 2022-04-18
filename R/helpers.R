@@ -26,6 +26,54 @@ groups_by_filter <- function(covariate, nbins, ties.method="random", seed=NULL){
 	as.factor(ceiling( rfs* nbins))
 }
 
+#' Stratify hypotheses based on increasing value of the covariate 
+#'
+#'  Hypotheses are stratified into nbins different strata of (approximately) equal size based on
+#' increasing value of the covariate
+#' extension of `groups_by_filter` for multidimensional covariates, per-covariate quantiles
+#'
+#' @param covariates Numeric vector of ordinal covariates based on which the stratification will be done.
+#' @param nbins Integer, number of groups/strata into which p-values will be split based on covariate.
+#' @param ties.method Character specifying how ties are treated, see \code{\link{rank}} function.
+#' @param seed Integer, specifies random seed to be used when ties.method=="random".
+#' @return A factor with nbins different levels, each entry corresponds to the stratum the i-th hypothesis
+#'  was assigned to.
+#' @examples
+#' covariates <- matrix(runif(300), ncol = 3)
+#' groups <- groups_by_filter_multivariate(covariates, 10)
+#' @export
+groups_by_filter_multivariate <- function(covariates, nbins, ties.method = "random", seed = NULL) {
+  if (!is.null(seed) && ties.method == "random") {
+    # http://stackoverflow.com/questions/14324096/setting-seed-locally-not-globally-in-r?rq=1
+    tmp <- stats::runif(1)
+    old <- .Random.seed
+    on.exit({
+      .Random.seed <<- old
+    })
+    set.seed(as.integer(seed))
+  }
+  
+  nvar <- ncol(covariates)
+  groups <- lapply(seq_len(nvar), function(i) {
+    covariate_i <- covariates[, i]
+    rfs_i <- rank(covariate_i, ties.method = ties.method) / length(covariate_i)
+    ceiling(rfs_i * nbins)
+  })
+  
+  groups <- do.call(cbind, groups)
+  groups <- as.data.frame(groups) 
+  
+  if(nvar == 1){
+    groups <- unname(unlist(groups))
+  }else{
+    groups <- apply(groups, 1, paste, collapse = "-") # base R equivalent of tidyr::unite
+  }
+  # convert to factor
+  groups <- as.factor(groups)
+  
+  return(groups)
+}
+
 # given list of adjusted p-values and original p-values
 # calculate actual threshold! 
 padj_to_threshold <- function(padj, pvals, alpha){
@@ -65,7 +113,7 @@ filter_pvals_for_optim <- function(pvals, alpha, ntests=length(pvals)){
 get_bh_threshold <- function(pvals, alpha, mtests = length(pvals)){
   m <- length(pvals)
   pvals <- sort(pvals)
-  prejected <- which(pvals <= (1:m)/mtests*alpha)
+  prejected <- which(pvals <= seq_len(m)/mtests*alpha)
   ifelse(length(prejected)==0, 0, pvals[prejected[which.max(prejected)]])
 }
 
@@ -111,4 +159,15 @@ fill_nas_reorder <- function (reduced_vector, nna, order){
     full_vector[nna] <- reduced_vector[order]
   }
   full_vector
+}
+
+fill_nas_reorder_dataframe <- function(reduced_df, nna, order) {
+  if (length(nna) == 1 && nna) {
+    full_df <- reduced_df[order, , drop = FALSE]
+  } else {
+    full_df <- data.frame(matrix(NA, nrow = length(nna), ncol = ncol(reduced_df)))
+    colnames(full_df) <- colnames(reduced_df)
+    full_df[nna, ] <- reduced_df[order, ]
+  }
+  full_df
 }

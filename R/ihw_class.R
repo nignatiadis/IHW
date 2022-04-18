@@ -12,7 +12,11 @@
 #' @slot adjustment_type  Character, "BH" or "bonferroni"
 #' @slot reg_path_information  A data.frame, information about the whole regularization path. (Currently not used, thus empty)
 #' @slot solver_information  A list, solver specific output, e.g. were all subproblems solved to optimality? (Currently empty list)
-#'
+#' @slot stratification_method Character, "quantiles" or "forest" or "none"
+#' @slot weight_matrices_forest list of list of vectors, equivalent of weights, but for stratification method forest
+#' @slot ntaus  Integer, number of censoring thresholds tau to be considered for stratification method "forest"
+#' @slot ntrees  Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}} for stratification method "forest"
+#' 
 #' @return The different methods applied to an ihwResult object can return the following:
 #' @return 1) A vector
 #'     of length equal to the number of hypotheses tested (e.g. the adjusted p-value or the weight
@@ -47,13 +51,17 @@ ihwResult <- setClass("ihwResult",
            		     alpha = "numeric",
                    nbins = "integer",
                    nfolds = "integer",
-                   regularization_term = "numeric",
+                   regularization_term = "matrix",
                    m_groups = "integer",
                    penalty = "character",
                    covariate_type = "character",
                    adjustment_type = "character",
                    reg_path_information = "data.frame",
-           		     solver_information= "list"))
+           		     solver_information= "list",
+           		     stratification_method = "character",
+           		     weight_matrices_forest = "list",
+           		     ntaus = "integer",
+           		     ntrees = "integer"))
 
 #-----------------------------adjusted p-values extraction---------------------------------------------------------#
 adj_pvalues_ihwResult <- function(object){
@@ -73,7 +81,11 @@ setMethod("adj_pvalues", signature(object="ihwResult"),
 
 weights_ihwResult <-function(object, levels_only = FALSE){
   if (levels_only) {
-    object@weights
+    if(object@stratification_method == "forest"){
+      object@weight_matrices_forest
+    }else{
+      object@weights
+    }
   } else {
     object@df$weight #TODO: Storing redundant information right now
   }
@@ -94,8 +106,16 @@ setMethod("weights", signature(object="ihwResult"),
 
 
 thresholds_ihwResult <-function(object, levels_only = FALSE){
+  if(object@stratification_method == "forest" & levels_only == TRUE){
+    stop("threshold() extraction currently not available for stratification_method = forest and levels_only == TRUE")
+  }else if(object@stratification_method == "forest" & levels_only == FALSE){
+    mtests <- length(na.exclude(weighted_pvalues(object)))
+  }else{
+    mtests <- sum(as.numeric(m_groups(object)))
+  }
+  
   t <- get_bh_threshold(na.exclude(weighted_pvalues(object)), alpha(object),
-                        mtests = sum(as.numeric(m_groups(object))))
+                        mtests = mtests)
   t*weights(object, levels_only = levels_only)
 }
 
@@ -142,7 +162,12 @@ setMethod("weighted_pvalues", signature(object="ihwResult"),
 #---------------------------  covariate extraction ----------------------------------------------------------#
 
 covariates_ihwResult <- function(object){
-  object@df$covariate
+  covariate <- dplyr::select(object@df, dplyr::starts_with("covariate")) #TODO fix this
+  if(ncol(covariate) == 1){
+    unlist(covariate)
+  }else{
+    as.matrix(covariate)
+  }
 }
 
 #' @rdname ihwResult-class
@@ -167,8 +192,12 @@ setMethod("covariate_type", signature(object="ihwResult"),
           covariate_type_ihwResult)
 
 #----------------- extract stratification variable------------------------------------------------------------#
-groups_factor_ihwResult <- function(object){
-	object@df$group
+groups_factor_ihwResult <- function(object){#
+  if(object@stratification_method == "forest"){
+    groups <- dplyr::select(object@df, dplyr::contains("tree")) 
+  }else{
+    object@df$group
+  }
 }
 
 #' @rdname ihwResult-class
@@ -193,7 +222,12 @@ setMethod("nfolds", signature(object="ihwResult"),
 
 
 #----------------- nbins extraction ----------------------------------------------------------------------#
-nbins_ihwResult <- function(object) object@nbins
+nbins_ihwResult <- function(object){
+  if(object@stratification_method == "forest"){
+    stop("nbins() currently not available for stratification_method = forest")
+  }
+  object@nbins
+} 
 
 #' @rdname ihwResult-class
 setGeneric("nbins", function(object) standardGeneric("nbins"))
@@ -267,7 +301,17 @@ setMethod("regularization_term", signature(object="ihwResult"),
           regularization_term_ihwResult)
 
 #---------------- m_groups --------------------------------------------------
-m_groups_ihwResult <-function(object) object@m_groups
+m_groups_ihwResult <-function(object){
+  if(object@stratification_method == "forest"){
+    warning("For stratification_method = forest, m_groups has the structure of a nested list (fold-tree-group)") 
+    groups <- groups_factor(object)
+    fold <- object@df$fold
+    m_groups <- lapply(groups, function(group) table(group, fold))
+    m_groups
+  }else{
+    object@m_groups 
+  }
+} 
 
 #' @rdname ihwResult-class
 setGeneric("m_groups", function(object) standardGeneric("m_groups"))
@@ -316,6 +360,10 @@ setMethod("show", signature(object="ihwResult"), function(object) {
 
 ##### FDR estimate #############################################################
 plugin_fdr.ihwResult <- function(object) {
+  if(object@stratification_method == "forest"){
+    stop("plugin_fdr() currently not available for stratification_method = forest")
+  }
+  
   ts <- thresholds(object)
   m_groups <- table(groups_factor(object))
   sum(ts*m_groups)/rejections(object, method="thresholds")
@@ -329,12 +377,20 @@ setMethod("plugin_fdr", signature(object="ihwResult"),
 
 
 ##### #############################################################
-stratification_breaks.ihwResult <- function(object) {
+stratification_breaks.ihwResult <- function(object, fold = 1,tree = 1) {
+  covariates <- covariates(object)
+  if(is.matrix(covariates)){
+    if(ncol(covariates) > 1) stop("stratification_breaks() currently not available for multi-dimensional covariates")
+  }
+
   ts <- thresholds(object)
   groups <- groups_factor(object)
+  if(object@stratification_method == "forest"){
+    groups <- groups[ ,(fold - 1) * nfolds(object) + tree, drop = TRUE]
+  } 
   filterstat_list <- split(covariates(object), groups)
   filterstats <- sapply(filterstat_list, max)
-  filterstats
+  sort(filterstats)
 }
 
 setGeneric("stratification_breaks", function(object,...) standardGeneric("stratification_breaks"))
@@ -354,6 +410,10 @@ setValidity( "ihwResult", function( object ) {
 
 
 per_bin_fdrs <- function(obj) {
+  if(obj@stratification_method == "forest"){
+    stop("per_bin_fdrs() currently not available for stratification_method = forest")
+  }
+  
   ts <- thresholds(obj)
   groups <- groups_factor(obj)
   pvals <- pvalues(obj)

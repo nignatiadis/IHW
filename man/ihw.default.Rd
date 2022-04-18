@@ -26,6 +26,13 @@
   null_proportion = FALSE,
   null_proportion_level = 0.5,
   return_internal = FALSE,
+  stratification_method = "quantiles",
+  ntrees = 10L,
+  ntaus = 10L,
+  nsplit = "auto",
+  maxdepth = "auto",
+  nodesize = "auto",
+  mtry = "auto",
   ...
 )
 
@@ -34,7 +41,7 @@
 \arguments{
 \item{pvalues}{Numeric vector of unadjusted p-values.}
 
-\item{covariates}{Vector which contains the one-dimensional covariates (independent under the H0 of the p-value)
+\item{covariates}{Vector or matrix which contains the covariates (independent under the H0 of the p-value)
 for each test. Can be numeric or a factor. (If numeric it will be converted into factor by binning.)}
 
 \item{alpha}{Numeric, sets the nominal level for FDR control.}
@@ -84,9 +91,27 @@ is used within each bin to estimate the proportion of null hypotheses.}
 
 \item{return_internal}{Returns a lower level representation of the output (only useful for debugging purposes).}
 
+\item{stratification_method}{Character ("quantiles" or "forest")}
+
+\item{ntrees}{Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}} for stratification method "forest"}
+
+\item{ntaus}{Integer, number of censoring thresholds tau to be considered for stratification method "forest"}
+
+\item{nsplit}{Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}} for stratification method "forest"
+Use "auto" for automatic selection.}
+
+\item{maxdepth}{Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}} for stratification method "forest"
+Use "auto" for automatic selection.}
+
+\item{nodesize}{Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}} for stratification method "forest"
+Use "auto" for automatic selection.}
+
+\item{mtry}{Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}} for stratification method "forest"
+Use "auto" for automatic selection.}
+
 \item{...}{Arguments passed to internal functions.}
 
-\item{formula}{\code{\link{formula}}, specified in the form pvalue~covariate (only 1D covariate supported)}
+\item{formula}{\code{\link{formula}}, specified in the form pvalue~covariate1+covariate2+...}
 
 \item{data}{data.frame from which the variables in formula should be taken}
 }

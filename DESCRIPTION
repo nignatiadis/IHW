@@ -19,7 +19,9 @@ Imports:
     slam,
     lpsymphony,
     fdrtool,
-    BiocGenerics
+    BiocGenerics,
+    randomForestSRC,
+    stats
 Suggests:
     ggplot2,
     dplyr,
@@ -37,4 +39,4 @@ VignetteBuilder: knitr
 biocViews: ImmunoOncology, 
     MultipleComparison,
     RNASeq
-RoxygenNote: 7.1.1
+RoxygenNote: 7.1.2
