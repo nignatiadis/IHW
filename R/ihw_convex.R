@@ -498,7 +498,7 @@ ihw_internal <- function(sorted_groups, sorted_pvalues, alpha, lambdas,
 				                  sorted_weights[sorted_folds == i],
 				                  tau= null_proportion_level,
 				                  m=sum(m_groups_holdout_fold))
-      browser()
+			
 			sorted_weights[sorted_folds == i] <- sorted_weights[sorted_folds == i]/pi0_est
 			weight_matrix[,i] <- weight_matrix[,i]/pi0_est
 
