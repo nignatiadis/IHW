@@ -204,7 +204,7 @@ ihw.default <- function(pvalues, covariates, alpha,
 		}
 
 		if (nbins == "auto"){
-			nbins <- max(1,min(40, floor(length(pvalues)/(1500*nvar)))) # rule of thumb..
+			nbins <- max(1,min(40, floor(length(pvalues)/1500))) # rule of thumb..
 		}
 	  
 	  if (stratification_method == "quantiles") {
