@@ -217,6 +217,7 @@ ihw.default <- function(pvalues, covariates, alpha,
 		penalty <- "total variation"
 
 	} else if (is.factor(covariates)){
+	  stratification_method <- "none"
 		groups <- covariates
 		if (nbins != "auto" & nbins != nlevels(groups)){
 			warning("Overwriting manually specified nbins, since it has to equal the number
