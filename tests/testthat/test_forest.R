@@ -58,13 +58,13 @@ expect_equal(rejections(ihw_num_mat_noise), rejections(ihw_num_mat_noise_formula
 
 # test the actual forest
 ntrees <- 2
-ntaus <- 2
+n_censor_thres <- 2
 
 set.seed(1)
-ihw_forest_num_vec <- ihw(sim$pvalue, cov_num_vec, .1, stratification_method = "forest", ntrees = ntrees, ntaus = ntaus, seed = 1)
+ihw_forest_num_vec <- ihw(sim$pvalue, cov_num_vec, .1, stratification_method = "forest", ntrees = ntrees, n_censor_thres = n_censor_thres, seed = 1)
 set.seed(1)
-ihw_forest_num_mat <- ihw(sim$pvalue, cov_num_mat, .1, stratification_method = "forest", ntrees = ntrees, ntaus = ntaus, seed = 1)
-ihw_forest_num_mat_noise <- ihw(sim$pvalue, cov_num_mat_noise, .1, stratification_method = "forest", ntrees = ntrees, ntaus = ntaus, seed = 1)
+ihw_forest_num_mat <- ihw(sim$pvalue, cov_num_mat, .1, stratification_method = "forest", ntrees = ntrees, n_censor_thres = n_censor_thres, seed = 1)
+ihw_forest_num_mat_noise <- ihw(sim$pvalue, cov_num_mat_noise, .1, stratification_method = "forest", ntrees = ntrees, n_censor_thres = n_censor_thres, seed = 1)
 
 expect_equal(rejections(ihw_forest_num_vec), rejections(ihw_forest_num_mat)) 
 
@@ -87,11 +87,11 @@ expect_equal(nrow(covariates(ihw_forest_num_mat_noise)), m)
 # check if general getters and setters work
 expect_true(is.data.frame(groups_factor(ihw_forest_num_vec)))
 dim(groups_factor(ihw_forest_num_vec))
-expect_equal(dim(groups_factor(ihw_forest_num_vec)), c(m, nfolds(ihw_forest_num_vec) *ntrees *ntaus))
+expect_equal(dim(groups_factor(ihw_forest_num_vec)), c(m, nfolds(ihw_forest_num_vec) *ntrees *n_censor_thres))
 
 expect_warning(ihw_forest_num_vec_m_groups <- m_groups(ihw_forest_num_vec))
 expect_true(is.list(ihw_forest_num_vec_m_groups))
-expect_equal(nfolds(ihw_forest_num_vec) *ntrees *ntaus, length(ihw_forest_num_vec_m_groups))
+expect_equal(nfolds(ihw_forest_num_vec) *ntrees *n_censor_thres, length(ihw_forest_num_vec_m_groups))
 expect_true(is.matrix(ihw_forest_num_vec_m_groups[[1]]))
 expect_equal(ncol(ihw_forest_num_vec_m_groups[[1]]), nfolds(ihw_forest_num_vec))
 

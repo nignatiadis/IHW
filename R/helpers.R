@@ -30,12 +30,12 @@ groups_by_filter <- function(covariate, nbins, ties.method="random", seed=NULL){
 #'
 #'  Hypotheses are stratified into nbins different strata of (approximately) equal size based on
 #' increasing value of the covariate
-#' extension of `groups_by_filter` for multidimensional covariates, per-covariate quantiles
+#' extension of \code{\link{groups_by_filter}} for multidimensional covariates, per-covariate quantiles
 #'
-#' @param covariates Numeric vector of ordinal covariates based on which the stratification will be done.
+#' @param covariates matrix, data.frame or tibble of ordinal covariates based on which the stratification will be done.
 #' @param nbins Integer, number of groups/strata into which p-values will be split based on covariate.
 #' @param ties.method Character specifying how ties are treated, see \code{\link{rank}} function.
-#' @param seed Integer, specifies random seed to be used when ties.method=="random".
+#' @param seed Integer, specifies random seed to be used when \code{ties.method=="random"}.
 #' @return A factor with nbins different levels, each entry corresponds to the stratum the i-th hypothesis
 #'  was assigned to.
 #' @examples
@@ -55,23 +55,21 @@ groups_by_filter_multivariate <- function(covariates, nbins, ties.method = "rand
   
   nvar <- ncol(covariates)
   groups <- lapply(seq_len(nvar), function(i) {
-    covariate_i <- covariates[, i]
+    covariate_i <- covariates[, i, drop = TRUE]
     rfs_i <- rank(covariate_i, ties.method = ties.method) / length(covariate_i)
     ceiling(rfs_i * nbins)
   })
   
-  groups <- do.call(cbind, groups)
-  groups <- as.data.frame(groups) 
-  
   if(nvar == 1){
     groups <- unname(unlist(groups))
   }else{
+    groups <- do.call(cbind, groups)
     groups <- apply(groups, 1, paste, collapse = "-") # base R equivalent of tidyr::unite
   }
   # convert to factor
   groups <- as.factor(groups)
   
-  return(groups)
+  groups
 }
 
 # given list of adjusted p-values and original p-values

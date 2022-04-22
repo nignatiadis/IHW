@@ -205,7 +205,7 @@ An S4 class to represent the ihw output.
 
 \item{\code{weight_matrices_forest}}{list of list of vectors, equivalent of weights, but for stratification method forest}
 
-\item{\code{ntaus}}{Integer, number of censoring thresholds tau to be considered for stratification method "forest"}
+\item{\code{n_censor_thres}}{Integer, number of censoring thresholds tau to be considered for stratification method "forest"}
 
 \item{\code{ntrees}}{Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}} for stratification method "forest"}
 }}

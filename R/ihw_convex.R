@@ -47,16 +47,16 @@ ihw <- function(...)
 #'        is used within each bin to estimate the proportion of null hypotheses.
 #' @param null_proportion_level Numeric, threshold for Storey's pi0 estimation procedure, defaults to 0.5
 #' @param return_internal Returns a lower level representation of the output (only useful for debugging purposes).
-#' @param stratification_method Character ("quantiles" or "forest")
-#' @param ntrees Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}} for stratification method "forest"
-#' @param ntaus Integer, number of censoring thresholds tau to be considered for stratification method "forest"
-#' @param nsplit Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}} for stratification method "forest"
+#' @param stratification_method Character ("quantiles" or "forest" or "none")
+#' @param ntrees Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}} used when \code{stratification_method=="forest"}
+#' @param n_censor_thres Integer, number of censoring thresholds tau to be considered for stratification method "forest"
+#' @param nsplit Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}} used when \code{stratification_method=="forest"}
 #'				Use "auto" for automatic selection.
-#' @param maxdepth Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}} for stratification method "forest"
+#' @param maxdepth Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}} used when \code{stratification_method=="forest"}
 #'				Use "auto" for automatic selection.
-#' @param nodesize Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}} for stratification method "forest"
+#' @param nodesize Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}} used when \code{stratification_method=="forest"}
 #'				Use "auto" for automatic selection.
-#' @param mtry Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}} for stratification method "forest"
+#' @param mtry Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}} used when \code{stratification_method=="forest"}
 #'				Use "auto" for automatic selection.
 #' @param ... Arguments passed to internal functions.
 #'
@@ -102,7 +102,7 @@ ihw.default <- function(pvalues, covariates, alpha,
 						return_internal = FALSE,
 						stratification_method = "quantiles",
 						ntrees = 10L,
-						ntaus = 10L,
+						n_censor_thres = 10L,
 						nsplit = "auto",
 						maxdepth = "auto",
 						nodesize = "auto",
@@ -143,7 +143,7 @@ ihw.default <- function(pvalues, covariates, alpha,
       null_proportion_level,
       return_internal,
       ntrees,
-      ntaus,
+      n_censor_thres,
       nsplit,
       maxdepth,
       nodesize,
@@ -282,7 +282,7 @@ ihw.default <- function(pvalues, covariates, alpha,
 	# once we have groups, check whether they include enough p-values
 	if(nbins > 1 & any(m_groups < 2)){
 	  stop("Bins of size < 2 are currently not allowed for hypothesis weighting. Please lower the number of bins or try a different stratification method.")
-	}else if (nbins > 1 & any(m_groups < 1000)){
+	} else if (nbins > 1 & any(m_groups < 1000)){
 		message("We recommend that you supply (many) more than 1000 p-values for meaningful data-driven hypothesis weighting results.")
 	} 
 
@@ -368,7 +368,7 @@ ihw.default <- function(pvalues, covariates, alpha,
 		 			solver_information = list(),
 					stratification_method = stratification_method,
 					weight_matrices_forest = list(),
-					ntaus = integer(0),
+					n_censor_thres = integer(0),
 					ntrees = integer(0))
 
 	ihw_obj

@@ -20,7 +20,7 @@ ihw_forest <- function(pvalues, covariates, alpha,
                        null_proportion_level,
                        return_internal,
                        ntrees,
-                       ntaus,
+                       n_censor_thres,
                        nsplit,
                        maxdepth,
                        nodesize,
@@ -99,7 +99,7 @@ ihw_forest <- function(pvalues, covariates, alpha,
 
   # the stratification method is the main point of deviation of ihw.default_forest from ihw.default
   # groups in ihw.default_forest has the structure of nested list compared to a simple vector in ihw.default
-  groups <- group_by_forest(pvalues, covariates, folds, ntrees, ntaus, nsplit, maxdepth, nodesize, mtry, seed)
+  groups <- group_by_forest(pvalues, covariates, folds, ntrees, n_censor_thres, nsplit, maxdepth, nodesize, mtry, seed)
 
   penalty <- "total variation"
 
@@ -134,7 +134,7 @@ ihw_forest <- function(pvalues, covariates, alpha,
   } else if (any(m_groups_unlist < 1000)) {
     message("We recommend that you supply (many) more than 1000 p-values for meaningful data-driven hypothesis weighting results.")
   }
-  ntrees_all_comb <- ntaus * ntrees # length(res[[1]])
+  ntrees_all_comb <- n_censor_thres * ntrees # length(res[[1]])
 
   # loop over all folds and trees and run ihw_internal
   res <- lapply(seq_len(nfolds), function(i) {
@@ -166,7 +166,7 @@ ihw_forest <- function(pvalues, covariates, alpha,
   }
 
   # extract lambdas, weights from nested list
-  ntrees_all_comb <- ntaus * ntrees # length(res[[1]])
+  ntrees_all_comb <- n_censor_thres * ntrees # length(res[[1]])
 
   # extract lambdas
   fold_lambdas <- matrix(NA, nrow = nfolds, ncol = ntrees_all_comb)
@@ -241,7 +241,7 @@ ihw_forest <- function(pvalues, covariates, alpha,
     solver_information = list(),
     stratification_method = "forest",
     weight_matrices_forest = weight_matrices_forest,
-    ntaus = as.integer(ntaus),
+    n_censor_thres = as.integer(n_censor_thres),
     ntrees = as.integer(ntrees)
   )
 
@@ -256,7 +256,7 @@ ihw_forest <- function(pvalues, covariates, alpha,
 #' @param covariates Matrix which contains the covariates (independent under the H0 of the p-value) for each test.
 #' @param folds Integer vector, Pre-specify assignment of hypotheses into folds.
 #' @param ntrees Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}}
-#' @param ntaus Integer, number of censoring thresholds tau to be considered
+#' @param n_censor_thres Integer, number of censoring thresholds tau to be considered
 #' @param nsplit Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}}
 #'               Use "auto" for automatic selection.
 #' @param maxdepth Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}}
@@ -284,7 +284,7 @@ ihw_forest <- function(pvalues, covariates, alpha,
 #'   lapply(group, function(group_i) table(group_i, folds))
 #' })
 #' @export
-group_by_forest <- function(pvalues, covariates, folds, ntrees = 10, ntaus = 5, nsplit = "auto", maxdepth = "auto", nodesize = "auto", mtry = "auto", seed = NULL) {
+group_by_forest <- function(pvalues, covariates, folds, ntrees = 10, n_censor_thres = 5, nsplit = "auto", maxdepth = "auto", nodesize = "auto", mtry = "auto", seed = NULL) {
   m <- length(pvalues)
   nfolds <- length(unique(folds))
 
@@ -303,7 +303,7 @@ group_by_forest <- function(pvalues, covariates, folds, ntrees = 10, ntaus = 5, 
     pvalues_other_folds <- pvalues[folds != i]
 
     # get quantile breaks, remove trivial tail and head
-    quantile_seq <- seq(0, 1, length.out = ntaus + 2)[2:(ntaus + 1)]
+    quantile_seq <- seq(0, 1, length.out = n_censor_thres + 2)[2:(n_censor_thres + 1)]
 
     groups <- lapply(quantile_seq, function(quantile_seq_i) {
       # get represantative quantile breaks for he aus for good coverage

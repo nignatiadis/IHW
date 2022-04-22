@@ -12,7 +12,7 @@ group_by_forest(
   covariates,
   folds,
   ntrees = 10,
-  ntaus = 5,
+  n_censor_thres = 5,
   nsplit = "auto",
   maxdepth = "auto",
   nodesize = "auto",
@@ -29,7 +29,7 @@ group_by_forest(
 
 \item{ntrees}{Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}}}
 
-\item{ntaus}{Integer, number of censoring thresholds tau to be considered}
+\item{n_censor_thres}{Integer, number of censoring thresholds tau to be considered}
 
 \item{nsplit}{Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}}
 Use "auto" for automatic selection.}

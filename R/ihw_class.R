@@ -14,7 +14,7 @@
 #' @slot solver_information  A list, solver specific output, e.g. were all subproblems solved to optimality? (Currently empty list)
 #' @slot stratification_method Character, "quantiles" or "forest" or "none"
 #' @slot weight_matrices_forest list of list of vectors, equivalent of weights, but for stratification method forest
-#' @slot ntaus  Integer, number of censoring thresholds tau to be considered for stratification method "forest"
+#' @slot n_censor_thres  Integer, number of censoring thresholds tau to be considered for stratification method "forest"
 #' @slot ntrees  Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}} for stratification method "forest"
 #' 
 #' @return The different methods applied to an ihwResult object can return the following:
@@ -60,7 +60,7 @@ ihwResult <- setClass("ihwResult",
            		     solver_information= "list",
            		     stratification_method = "character",
            		     weight_matrices_forest = "list",
-           		     ntaus = "integer",
+           		     n_censor_thres = "integer",
            		     ntrees = "integer"))
 
 #-----------------------------adjusted p-values extraction---------------------------------------------------------#
@@ -161,13 +161,10 @@ setMethod("weighted_pvalues", signature(object="ihwResult"),
 
 #---------------------------  covariate extraction ----------------------------------------------------------#
 
-covariates_ihwResult <- function(object){
-  covariate <- dplyr::select(object@df, dplyr::starts_with("covariate")) #TODO fix this
-  if(ncol(covariate) == 1){
-    unlist(covariate)
-  }else{
-    as.matrix(covariate)
-  }
+covariates_ihwResult <- function(object){ 
+  covariate_names <- grepl("^covariate_", colnames(object@df))
+  covariates <- object@df[ ,covariate_names, drop = TRUE]
+  covariates
 }
 
 #' @rdname ihwResult-class
@@ -195,6 +192,11 @@ setMethod("covariate_type", signature(object="ihwResult"),
 groups_factor_ihwResult <- function(object){#
   if(object@stratification_method == "forest"){
     groups <- dplyr::select(object@df, dplyr::contains("tree")) 
+    
+    group_names <- grepl("^covariate_", colnames(object@df)) #TODO regex contains names
+    groups <- object@df[ ,group_names, drop = TRUE]
+    groups
+    
   }else{
     object@df$group
   }
@@ -377,7 +379,7 @@ setMethod("plugin_fdr", signature(object="ihwResult"),
 
 
 ##### #############################################################
-stratification_breaks.ihwResult <- function(object, fold = 1,tree = 1) {
+stratification_breaks.ihwResult <- function(object, fold = 1, tree = 1) {
   covariates <- covariates(object)
   if(is.matrix(covariates)){
     if(ncol(covariates) > 1) stop("stratification_breaks() currently not available for multi-dimensional covariates")

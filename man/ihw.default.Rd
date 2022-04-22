@@ -28,7 +28,7 @@
   return_internal = FALSE,
   stratification_method = "quantiles",
   ntrees = 10L,
-  ntaus = 10L,
+  n_censor_thres = 10L,
   nsplit = "auto",
   maxdepth = "auto",
   nodesize = "auto",
@@ -95,7 +95,7 @@ is used within each bin to estimate the proportion of null hypotheses.}
 
 \item{ntrees}{Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}} for stratification method "forest"}
 
-\item{ntaus}{Integer, number of censoring thresholds tau to be considered for stratification method "forest"}
+\item{n_censor_thres}{Integer, number of censoring thresholds tau to be considered for stratification method "forest"}
 
 \item{nsplit}{Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}} for stratification method "forest"
 Use "auto" for automatic selection.}
