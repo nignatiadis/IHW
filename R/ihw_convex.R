@@ -280,8 +280,8 @@ ihw.default <- function(pvalues, covariates, alpha,
 		}
 	}
 	# once we have groups, check whether they include enough p-values
-	if(nbins > 1 & any(m_groups == 0)){
-	  stop("Empty bins are currently not allowed for hypothesis weighting. Please lower the number of bins or try a different stratification method.")
+	if(nbins > 1 & any(m_groups < 2)){
+	  stop("Bins of size < 2 are currently not allowed for hypothesis weighting. Please lower the number of bins or try a different stratification method.")
 	}else if (nbins > 1 & any(m_groups < 1000)){
 		message("We recommend that you supply (many) more than 1000 p-values for meaningful data-driven hypothesis weighting results.")
 	} 
