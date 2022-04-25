@@ -27,17 +27,27 @@ wasserman_normal_sim <- function(m, pi0, xi_min, xi_max, seed = NULL) {
 m <- 10000
 sim <- wasserman_normal_sim(m, 0.85, 0, 3, seed = 1)
 
-#--------- IHW quantile ------------------------------------------#
-# we want IHW to work for covariates input of the class:
-# vector-factor, vector-numeric (old)
-# matrix-numeric, 1 column and multiple columns (new)
-#--------------------------------------------------------------------#
-
 #create covariates of all above formats 
 cov_num_vec <- sim$filterstat
 cov_fac_vec <- IHW:::groups_by_filter(cov_num_vec, 4)
 cov_num_mat <- as.matrix(cov_num_vec)
 cov_num_mat_noise <- as.matrix(sim[, c("filterstat", "noise")])
+
+#--------- IHW general ------------------------------------------#
+#--- should reduce to BH---------------
+#--------------------------------------------------------------------#
+ihw_test1 <- ihw(sim$pvalue, cov_num_vec, .1, nbins = 1)
+ihw_test2 <- ihw(sim$pvalue, cov_num_vec, .1, lambda = 0)
+rej_bh <- sum(p.adjust(sim$pvalue, n = m, method = "BH") <= .1)
+
+expect_equal(rejections(ihw_test1), rejections(ihw_test2))
+expect_equal(rejections(ihw_test2), rej_bh)
+
+#--------- IHW quantile ------------------------------------------#
+# we want IHW to work for covariates input of the class:
+# vector-factor, vector-numeric (old)
+# matrix-numeric, 1 column and multiple columns (new)
+#--------------------------------------------------------------------#
 
 ## ---run ihw with quantile stratification with different covariate class, check that yield equivalent results----
 set.seed(1)
@@ -64,7 +74,6 @@ ihw_num_mat_noise_formula2 <- ihw(sim$pvalue ~ sim$filterstat + sim$noise, alpha
 expect_equal(rejections(ihw_num_mat_noise), rejections(ihw_num_mat_noise_formula1))
 expect_equal(rejections(ihw_num_mat_noise), rejections(ihw_num_mat_noise_formula1))
 expect_lt(rejections(ihw_num_mat_noise), m)
-
 
 #--------- IHW forest ------------------------------------------#
 #--- run ihw with forest stratificatio---------------
