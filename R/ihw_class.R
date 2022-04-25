@@ -162,7 +162,7 @@ setMethod("weighted_pvalues", signature(object="ihwResult"),
 #---------------------------  covariate extraction ----------------------------------------------------------#
 
 covariates_ihwResult <- function(object){ 
-  covariate_names <- grepl("^covariate", colnames(object@df)) #TODO test this
+  covariate_names <- grepl("^covariate", colnames(object@df)) 
   covariates <- object@df[ ,covariate_names, drop = TRUE]
   covariates
 }
@@ -191,10 +191,8 @@ setMethod("covariate_type", signature(object="ihwResult"),
 #----------------- extract stratification variable------------------------------------------------------------#
 groups_factor_ihwResult <- function(object){#
   if(object@stratification_method == "forest"){
-    groups <- dplyr::select(object@df, dplyr::contains("tree")) 
-    
-    group_names <- grepl("tree", colnames(object@df)) #TODO test this
-    groups <- object@df[ ,group_names, drop = TRUE]
+    group_names <- grepl("tree", colnames(object@df)) 
+    groups <- object@df[ , group_names, drop = TRUE]
     groups
     
   }else{

@@ -86,7 +86,7 @@ expect_equal(nrow(covariates(ihw_forest_num_mat_noise)), m)
 
 # check if general getters and setters work
 expect_true(is.data.frame(groups_factor(ihw_forest_num_vec)))
-dim(groups_factor(ihw_forest_num_vec))
+
 expect_equal(dim(groups_factor(ihw_forest_num_vec)), c(m, nfolds(ihw_forest_num_vec) *ntrees *n_censor_thres))
 
 expect_warning(ihw_forest_num_vec_m_groups <- m_groups(ihw_forest_num_vec))
