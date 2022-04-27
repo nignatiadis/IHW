@@ -27,7 +27,7 @@
   null_proportion_level = 0.5,
   return_internal = FALSE,
   stratification_method = "quantiles",
-  ntrees = 10L,
+  ntrees = 5L,
   n_censor_thres = 10L,
   nsplit = "auto",
   maxdepth = "auto",
@@ -91,22 +91,22 @@ is used within each bin to estimate the proportion of null hypotheses.}
 
 \item{return_internal}{Returns a lower level representation of the output (only useful for debugging purposes).}
 
-\item{stratification_method}{Character ("quantiles" or "forest")}
+\item{stratification_method}{Character ("quantiles" or "forest" or "none")}
 
-\item{ntrees}{Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}} for stratification method "forest"}
+\item{ntrees}{Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}} used when \code{stratification_method=="forest"}}
 
 \item{n_censor_thres}{Integer, number of censoring thresholds tau to be considered for stratification method "forest"}
 
-\item{nsplit}{Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}} for stratification method "forest"
+\item{nsplit}{Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}} used when \code{stratification_method=="forest"}
 Use "auto" for automatic selection.}
 
-\item{maxdepth}{Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}} for stratification method "forest"
+\item{maxdepth}{Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}} used when \code{stratification_method=="forest"}
 Use "auto" for automatic selection.}
 
-\item{nodesize}{Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}} for stratification method "forest"
+\item{nodesize}{Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}} used when \code{stratification_method=="forest"}
 Use "auto" for automatic selection.}
 
-\item{mtry}{Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}} for stratification method "forest"
+\item{mtry}{Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}} used when \code{stratification_method=="forest"}
 Use "auto" for automatic selection.}
 
 \item{...}{Arguments passed to internal functions.}

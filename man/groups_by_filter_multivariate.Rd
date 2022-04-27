@@ -12,13 +12,13 @@ groups_by_filter_multivariate(
 )
 }
 \arguments{
-\item{covariates}{Numeric vector of ordinal covariates based on which the stratification will be done.}
+\item{covariates}{matrix, data.frame or tibble of ordinal covariates based on which the stratification will be done.}
 
 \item{nbins}{Integer, number of groups/strata into which p-values will be split based on covariate.}
 
 \item{ties.method}{Character specifying how ties are treated, see \code{\link{rank}} function.}
 
-\item{seed}{Integer, specifies random seed to be used when ties.method=="random".}
+\item{seed}{Integer, specifies random seed to be used when \code{ties.method=="random"}.}
 }
 \value{
 A factor with nbins different levels, each entry corresponds to the stratum the i-th hypothesis
@@ -27,7 +27,7 @@ A factor with nbins different levels, each entry corresponds to the stratum the 
 \description{
 Hypotheses are stratified into nbins different strata of (approximately) equal size based on
 increasing value of the covariate
-extension of `groups_by_filter` for multidimensional covariates, per-covariate quantiles
+extension of \code{\link{groups_by_filter}} for multidimensional covariates, per-covariate quantiles
 }
 \examples{
 covariates <- matrix(runif(300), ncol = 3)
