@@ -371,6 +371,7 @@ stratification_breaks.ihwResult <- function(object, fold = 1, tree = 1) {
   sort(filterstats)
 }
 
+#' @rdname ihwResult-class
 setGeneric("stratification_breaks", function(object,...) standardGeneric("stratification_breaks"))
 
 #' @describeIn ihwResult Return stratification breaks
