@@ -52,7 +52,7 @@ ihw <- function(...)
 #' @param n_censor_thres Integer, number of censoring thresholds tau to be considered for stratification method "forest"
 #' @param nsplit Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}} used when \code{stratification_method=="forest"}
 #'				Use "auto" for automatic selection.
-#' @param maxdepth Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}} used when \code{stratification_method=="forest"}
+#' @param nodedepth Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}} used when \code{stratification_method=="forest"}
 #'				Use "auto" for automatic selection.
 #' @param nodesize Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}} used when \code{stratification_method=="forest"}
 #'				Use "auto" for automatic selection.
@@ -104,7 +104,7 @@ ihw.default <- function(pvalues, covariates, alpha,
 						ntrees = 5L,
 						n_censor_thres = 10L,
 						nsplit = "auto",
-						maxdepth = "auto",
+						nodedepth = "auto",
 						nodesize = "auto",
 						mtry = "auto",
 						...){
@@ -145,7 +145,7 @@ ihw.default <- function(pvalues, covariates, alpha,
       ntrees,
       n_censor_thres,
       nsplit,
-      maxdepth,
+      nodedepth,
       nodesize,
       mtry,
       ...
