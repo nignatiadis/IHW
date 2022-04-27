@@ -287,12 +287,12 @@ ihw_forest <- function(pvalues, covariates, alpha,
 group_by_forest <- function(pvalues, covariates, folds, ntrees = 10, n_censor_thres = 5, nsplit = "auto", maxdepth = "auto", nodesize = "auto", mtry = "auto", seed = NULL) {
   m <- length(pvalues)
   nfolds <- length(unique(folds))
-
+  
   # TODO we will revisit smart smart default parameter choices later
-  if (nodesize == "auto") nodesize <- floor(0.9 * (m / 8))
-  if (nsplit == "auto") nsplit <- 3
+  #if (nodesize == "auto") nodesize <- floor(0.9 * (m / 8))
+  #if (nsplit == "auto") nsplit <- 3
   if (mtry == "auto") mtry <- ceiling(0.9 * ncol(covariates)) # a lot of noise data => high mtry
-  if (maxdepth == "auto") maxdepth <- 3
+  #if (maxdepth == "auto") maxdepth <- 3
 
   nodesize <- as.integer(nodesize)
   nsplit <- as.integer(nsplit)
@@ -301,6 +301,7 @@ group_by_forest <- function(pvalues, covariates, folds, ntrees = 10, n_censor_th
   pvalues_boundaries <- range(pvalues)
 
   groups <- lapply(seq_len(nfolds), function(i) {
+    browser()
     pvalues_other_folds <- pvalues[folds != i]
     #remove boundaries from p-values
     pvalues_other_folds <- pvalues_other_folds[!pvalues_other_folds %in% pvalues_boundaries]
@@ -309,6 +310,7 @@ group_by_forest <- function(pvalues, covariates, folds, ntrees = 10, n_censor_th
     quantile_seq <- seq(0, 1, length.out = n_censor_thres + 2)[2:(n_censor_thres + 1)]
 
     groups <- lapply(quantile_seq, function(quantile_seq_i) {
+      browser()
       # get represantative quantile breaks for he aus for good coverage
       tau <- stats::quantile(pvalues_other_folds, quantile_seq_i)
       # binary indicator from Boca and leek/storey
@@ -318,6 +320,10 @@ group_by_forest <- function(pvalues, covariates, folds, ntrees = 10, n_censor_th
       )
       data_other_folds <- data[folds != i, ]
 
+      data_training <- data[folds != i & pvalues < 1, ] #TODO !!!
+      #any(is.na(data_training$indic)) why?
+      mean(data_training$indic)
+      
       # grow forest based on other folds
       forest_other_fold <- randomForestSRC::rfsrc(
         indic ~ . - indic,
@@ -338,7 +344,8 @@ group_by_forest <- function(pvalues, covariates, folds, ntrees = 10, n_censor_th
 
       groups <- predict_groups$membership
       groups <- as.data.frame(groups)
-      groups[] <- lapply(groups, as.factor)
+      groups[] <- lapply(groups, as.factor) #
+      table(groups$V1)
 
       quantile_seq_i_round <- round(100 * quantile_seq_i, 0)
       colnames(groups) <- paste0(quantile_seq_i_round, "%_tree", seq_along(groups))
