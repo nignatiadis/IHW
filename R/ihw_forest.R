@@ -298,6 +298,7 @@ group_by_forest <- function(pvalues, covariates, folds, ntrees = 10, n_censor_th
   nsplit <- as.integer(nsplit)
   mtry <- as.integer(mtry)
   maxdepth <- as.integer(maxdepth)
+  pvalues_boundaries <- range(pvalues)
 
   groups <- lapply(seq_len(nfolds), function(i) {
     pvalues_other_folds <- pvalues[folds != i]
