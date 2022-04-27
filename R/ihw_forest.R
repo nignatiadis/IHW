@@ -302,6 +302,8 @@ group_by_forest <- function(pvalues, covariates, folds, ntrees = 10, n_censor_th
 
   groups <- lapply(seq_len(nfolds), function(i) {
     pvalues_other_folds <- pvalues[folds != i]
+    #remove boundaries from p-values
+    pvalues_other_folds <- pvalues_other_folds[!pvalues_other_folds %in% pvalues_boundaries]
 
     # get quantile breaks, remove trivial tail and head
     quantile_seq <- seq(0, 1, length.out = n_censor_thres + 2)[2:(n_censor_thres + 1)]
@@ -311,7 +313,7 @@ group_by_forest <- function(pvalues, covariates, folds, ntrees = 10, n_censor_th
       tau <- stats::quantile(pvalues_other_folds, quantile_seq_i)
       # binary indicator from Boca and leek/storey
       data <- data.frame(
-        indic = (pvalues >= tau) / (1 - tau),
+        indic = (pvalues >= tau),
         covariates = covariates
       )
       data_other_folds <- data[folds != i, ]
