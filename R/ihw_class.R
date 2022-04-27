@@ -355,6 +355,29 @@ setMethod("show", signature(object="ihwResult"), function(object) {
 })
 
 
+stratification_breaks.ihwResult <- function(object, fold = 1, tree = 1) {
+  covariates <- covariates(object)
+  if(is.matrix(covariates)){
+    if(ncol(covariates) > 1) stop("stratification_breaks() currently not available for multi-dimensional covariates")
+  }
+  
+  ts <- thresholds(object)
+  groups <- groups_factor(object)
+  if(object@stratification_method == "forest"){
+    groups <- groups[ , (fold - 1) * nfolds(object) + tree, drop = TRUE]
+  } 
+  filterstat_list <- split(covariates(object), groups)
+  filterstats <- sapply(filterstat_list, max)
+  sort(filterstats)
+}
+
+#' @rdname ihwResult-class
+setGeneric("stratification_breaks", function(object,...) standardGeneric("stratification_breaks"))
+
+#' @describeIn ihwResult Return stratification breaks
+#' @export
+setMethod("stratification_breaks", signature(object="ihwResult"),
+          stratification_breaks.ihwResult)
 
 #------------------ not exported stuff ----------------------------------------------------------------------------#
 
@@ -374,30 +397,6 @@ setGeneric("plugin_fdr", function(object,...) standardGeneric("plugin_fdr"))
 
 setMethod("plugin_fdr", signature(object="ihwResult"),
           plugin_fdr.ihwResult)
-
-
-##### #############################################################
-stratification_breaks.ihwResult <- function(object, fold = 1, tree = 1) {
-  covariates <- covariates(object)
-  if(is.matrix(covariates)){
-    if(ncol(covariates) > 1) stop("stratification_breaks() currently not available for multi-dimensional covariates")
-  }
-
-  ts <- thresholds(object)
-  groups <- groups_factor(object)
-  if(object@stratification_method == "forest"){
-    groups <- groups[ ,(fold - 1) * nfolds(object) + tree, drop = TRUE]
-  } 
-  filterstat_list <- split(covariates(object), groups)
-  filterstats <- sapply(filterstat_list, max)
-  sort(filterstats)
-}
-
-setGeneric("stratification_breaks", function(object,...) standardGeneric("stratification_breaks"))
-
-
-setMethod("stratification_breaks", signature(object="ihwResult"),
-          stratification_breaks.ihwResult)
 
 
 ######## temporary: number of pvals in each stratum #############################

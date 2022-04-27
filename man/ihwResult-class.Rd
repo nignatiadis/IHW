@@ -37,6 +37,8 @@
 \alias{as.data.frame,ihwResult-method}
 \alias{nrow,ihwResult-method}
 \alias{show,ihwResult-method}
+\alias{stratification_breaks}
+\alias{stratification_breaks,ihwResult-method}
 \title{An S4 class to represent the ihw output.}
 \usage{
 adj_pvalues(object)
@@ -104,6 +106,10 @@ as.data.frame_ihwResult(x, row.names = NULL, optional = FALSE, ...)
 \S4method{nrow}{ihwResult}(x)
 
 \S4method{show}{ihwResult}(object)
+
+stratification_breaks(object, ...)
+
+\S4method{stratification_breaks}{ihwResult}(object, fold = 1, tree = 1)
 }
 \arguments{
 \item{object, x}{A ihwResult object as returned by a call to ihw(...)}
@@ -172,6 +178,8 @@ An S4 class to represent the ihw output.
 \item \code{nrow}: Return number of p-values
 
 \item \code{show}: Convenience method to show ihwResult object
+
+\item \code{stratification_breaks}: Return stratification breaks
 }}
 
 \section{Slots}{
