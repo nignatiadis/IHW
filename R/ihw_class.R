@@ -374,6 +374,8 @@ stratification_breaks.ihwResult <- function(object, fold = 1, tree = 1) {
 #' @rdname ihwResult-class
 setGeneric("stratification_breaks", function(object,...) standardGeneric("stratification_breaks"))
 
+#' @param fold stratification_break from which fold, used when \code{stratification_method=="forest"}
+#' @param tree stratification_break from which tree, used when \code{stratification_method=="forest"}
 #' @describeIn ihwResult Return stratification breaks
 #' @export
 setMethod("stratification_breaks", signature(object="ihwResult"),

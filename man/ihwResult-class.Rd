@@ -120,6 +120,10 @@ stratification_breaks(object, ...)
 \item{...}{Parameters passed in to individual methods}
 
 \item{row.names, optional}{See ?base::as.data.frame for a description of these arguments.}
+
+\item{fold}{stratification_break from which fold, used when \code{stratification_method=="forest"}}
+
+\item{tree}{stratification_break from which tree, used when \code{stratification_method=="forest"}}
 }
 \value{
 The different methods applied to an ihwResult object can return the following:

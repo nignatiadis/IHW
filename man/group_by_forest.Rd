@@ -30,11 +30,9 @@ group_by_forest(
 
 \item{n_censor_thres}{Integer, number of censoring thresholds tau to be considered}
 
-\item{nodedepth}{Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}}
-Use "auto" for automatic selection.}
+\item{nodedepth}{Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}}}
 
-\item{nodesize}{Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}}
-Use "auto" for automatic selection.}
+\item{nodesize}{Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}}}
 
 \item{mtry}{Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}}
 Use "auto" for automatic selection.}
