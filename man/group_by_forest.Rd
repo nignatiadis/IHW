@@ -13,9 +13,8 @@ group_by_forest(
   folds,
   ntrees = 10,
   n_censor_thres = 5,
-  nsplit = "auto",
-  nodedepth = "auto",
-  nodesize = "auto",
+  nodedepth = 4,
+  nodesize = 1000,
   mtry = "auto",
   seed = NULL
 )
@@ -30,9 +29,6 @@ group_by_forest(
 \item{ntrees}{Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}}}
 
 \item{n_censor_thres}{Integer, number of censoring thresholds tau to be considered}
-
-\item{nsplit}{Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}}
-Use "auto" for automatic selection.}
 
 \item{nodedepth}{Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}}
 Use "auto" for automatic selection.}

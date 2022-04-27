@@ -21,7 +21,6 @@ ihw_forest <- function(pvalues, covariates, alpha,
                        return_internal,
                        ntrees,
                        n_censor_thres,
-                       nsplit,
                        nodedepth,
                        nodesize,
                        mtry,
@@ -39,7 +38,7 @@ ihw_forest <- function(pvalues, covariates, alpha,
   }
 
   if (nbins != "auto") {
-    stop("with the stratificaion_method forest nbins can not be directly controlled. Please use the parameters nsplit, nodedepth, nodesize instead")
+    stop("with the stratificaion_method forest nbins can not be directly controlled. Please use the parameters nodedepth and nodesize instead")
   }
 
   if ((length(lambdas) == 1) & (lambdas[1] == "auto")) {
@@ -99,7 +98,7 @@ ihw_forest <- function(pvalues, covariates, alpha,
 
   # the stratification method is the main point of deviation of ihw.default_forest from ihw.default
   # groups in ihw.default_forest has the structure of nested list compared to a simple vector in ihw.default
-  groups <- group_by_forest(pvalues, covariates, folds, ntrees, n_censor_thres, nsplit, nodedepth, nodesize, mtry, seed)
+  groups <- group_by_forest(pvalues, covariates, folds, ntrees, n_censor_thres, nodedepth, nodesize, mtry, seed)
 
   penalty <- "total variation"
 
@@ -130,7 +129,7 @@ ihw_forest <- function(pvalues, covariates, alpha,
   m_groups_unlist <- unlist(m_groups)
 
   if (any(m_groups_unlist < 2)) {
-    stop("Bins of size < 2 are currently not allowed. Please tune the parameters nsplit, nodedepth, nodesize")
+    stop("Bins of size < 2 are currently not allowed. Please tune the parameters nodedepth and nodesize")
   } else if (any(m_groups_unlist < 1000)) {
     message("We recommend that you supply (many) more than 1000 p-values for meaningful data-driven hypothesis weighting results.")
   }
@@ -257,12 +256,8 @@ ihw_forest <- function(pvalues, covariates, alpha,
 #' @param folds Integer vector, Pre-specify assignment of hypotheses into folds.
 #' @param ntrees Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}}
 #' @param n_censor_thres Integer, number of censoring thresholds tau to be considered
-#' @param nsplit Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}}
-#'               Use "auto" for automatic selection.
 #' @param nodedepth Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}}
-#'               Use "auto" for automatic selection.
 #' @param nodesize Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}}
-#'               Use "auto" for automatic selection.
 #' @param mtry Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}}
 #'               Use "auto" for automatic selection.
 #' @param seed Integer, specifies random seed to be used
@@ -284,20 +279,16 @@ ihw_forest <- function(pvalues, covariates, alpha,
 #'   lapply(group, function(group_i) table(group_i, folds))
 #' })
 #' @export
-group_by_forest <- function(pvalues, covariates, folds, ntrees = 10, n_censor_thres = 5, nsplit = "auto", nodedepth = "auto", nodesize = "auto", mtry = "auto", seed = NULL) {
+group_by_forest <- function(pvalues, covariates, folds, ntrees = 10, n_censor_thres = 5, nodedepth = 4, nodesize = 1000, mtry = "auto", seed = NULL) {
   m <- length(pvalues)
   nfolds <- length(unique(folds))
   
-  # TODO we will revisit smart smart default parameter choices later
-  #if (nodesize == "auto") nodesize <- 1000
-  #if (nsplit == "auto") nsplit <- 3
   if (mtry == "auto") mtry <- ceiling(0.9 * ncol(covariates)) # a lot of noise data => high mtry
-  #if (nodedepth == "auto") nodedepth <- 3
 
   nodesize <- as.integer(nodesize)
-  #nsplit <- as.integer(nsplit)
   mtry <- as.integer(mtry)
   nodedepth <- as.integer(nodedepth)
+  
   pvalues_boundaries <- range(pvalues)
 
   groups <- lapply(seq_len(nfolds), function(i) {
@@ -327,7 +318,6 @@ group_by_forest <- function(pvalues, covariates, folds, ntrees = 10, n_censor_th
         nodesize = nodesize,
         nodedepth = nodedepth,
         splitrule = "mse",
-        #nsplit = NULL,
         block.size = FALSE,
         forest.wt = FALSE,
         seed = seed

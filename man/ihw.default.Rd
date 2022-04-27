@@ -29,9 +29,8 @@
   stratification_method = "quantiles",
   ntrees = 5L,
   n_censor_thres = 10L,
-  nsplit = "auto",
-  nodedepth = "auto",
-  nodesize = "auto",
+  nodedepth = 4,
+  nodesize = 1000,
   mtry = "auto",
   ...
 )
@@ -97,14 +96,9 @@ is used within each bin to estimate the proportion of null hypotheses.}
 
 \item{n_censor_thres}{Integer, number of censoring thresholds tau to be considered for stratification method "forest"}
 
-\item{nsplit}{Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}} used when \code{stratification_method=="forest"}
-Use "auto" for automatic selection.}
+\item{nodedepth}{Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}} used when \code{stratification_method=="forest"}}
 
-\item{nodedepth}{Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}} used when \code{stratification_method=="forest"}
-Use "auto" for automatic selection.}
-
-\item{nodesize}{Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}} used when \code{stratification_method=="forest"}
-Use "auto" for automatic selection.}
+\item{nodesize}{Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}} used when \code{stratification_method=="forest"}}
 
 \item{mtry}{Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}} used when \code{stratification_method=="forest"}
 Use "auto" for automatic selection.}
