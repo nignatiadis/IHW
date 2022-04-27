@@ -30,7 +30,7 @@
   ntrees = 5L,
   n_censor_thres = 10L,
   nsplit = "auto",
-  maxdepth = "auto",
+  nodedepth = "auto",
   nodesize = "auto",
   mtry = "auto",
   ...
@@ -100,7 +100,7 @@ is used within each bin to estimate the proportion of null hypotheses.}
 \item{nsplit}{Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}} used when \code{stratification_method=="forest"}
 Use "auto" for automatic selection.}
 
-\item{maxdepth}{Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}} used when \code{stratification_method=="forest"}
+\item{nodedepth}{Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}} used when \code{stratification_method=="forest"}
 Use "auto" for automatic selection.}
 
 \item{nodesize}{Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}} used when \code{stratification_method=="forest"}

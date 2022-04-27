@@ -14,7 +14,7 @@ group_by_forest(
   ntrees = 10,
   n_censor_thres = 5,
   nsplit = "auto",
-  maxdepth = "auto",
+  nodedepth = "auto",
   nodesize = "auto",
   mtry = "auto",
   seed = NULL
@@ -34,7 +34,7 @@ group_by_forest(
 \item{nsplit}{Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}}
 Use "auto" for automatic selection.}
 
-\item{maxdepth}{Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}}
+\item{nodedepth}{Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}}
 Use "auto" for automatic selection.}
 
 \item{nodesize}{Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}}
