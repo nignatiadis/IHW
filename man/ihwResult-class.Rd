@@ -37,6 +37,7 @@
 \alias{as.data.frame,ihwResult-method}
 \alias{nrow,ihwResult-method}
 \alias{show,ihwResult-method}
+\alias{stratification_breaks}
 \alias{stratification_breaks,ihwResult-method}
 \title{An S4 class to represent the ihw output.}
 \usage{
@@ -105,6 +106,8 @@ as.data.frame_ihwResult(x, row.names = NULL, optional = FALSE, ...)
 \S4method{nrow}{ihwResult}(x)
 
 \S4method{show}{ihwResult}(object)
+
+stratification_breaks(object, ...)
 
 \S4method{stratification_breaks}{ihwResult}(object, fold = 1, tree = 1)
 }
