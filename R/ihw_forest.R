@@ -125,14 +125,22 @@ ihw_forest <- function(pvalues, covariates, alpha,
     lapply(sorted_groups_i, function(sorted_groups_i_t) table(sorted_groups_i_t, sorted_folds))
   })
 
-
+  #run diagnostic and give feedback
+  group_levels_length <- lapply(group_levels, function(group_levels_i) {
+    lapply(group_levels_i, function(group_levels_i_t) length(group_levels_i_t))
+  })
+  group_levels_length <- unlist(group_levels_length)
+  nbins_ideal <- max(1,min(40, floor(length(pvalues)/1500))) # rule of thumb..
+  if(any(group_levels_length) < nbins_ideal){
+    message(paste("For", length(pvalues), "non-na pvalues, we recommend", nbins_ideal," stratification bins for granular hypothesis weighting. Consider to increase nodedepth or decrease nodesize."))
+  }
+  
   # once we have groups, check whether they include enough p-values
   m_groups_unlist <- unlist(m_groups)
-
   if (any(m_groups_unlist < 2)) {
-    stop("Bins of size < 2 are currently not allowed. Please tune the parameters nsplit, nodedepth, nodesize")
+    stop("Bins of size < 2 are currently not allowed. Please decrease nodedepth or increase nodesize.")
   } else if (any(m_groups_unlist < 1000)) {
-    message("We recommend that you supply (many) more than 1000 p-values for meaningful data-driven hypothesis weighting results.")
+    message("We recommend that you supply (many) more than 1000 p-values for meaningful data-driven hypothesis weighting results. Consider to decrease nodedepth or increase nodesize.")
   }
   ntrees_all_comb <- n_censor_thres * ntrees # length(res[[1]])
 
