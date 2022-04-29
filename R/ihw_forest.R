@@ -21,7 +21,6 @@ ihw_forest <- function(pvalues, covariates, alpha,
                        return_internal,
                        ntrees,
                        n_censor_thres,
-                       nsplit,
                        nodedepth,
                        nodesize,
                        mtry,
@@ -39,7 +38,7 @@ ihw_forest <- function(pvalues, covariates, alpha,
   }
 
   if (nbins != "auto") {
-    stop("with the stratificaion_method forest nbins can not be directly controlled. Please use the parameters nsplit, nodedepth, nodesize instead")
+    stop("with the stratificaion_method forest nbins can not be directly controlled. Please use the parameters nodedepth and nodesize instead")
   }
 
   if ((length(lambdas) == 1) & (lambdas[1] == "auto")) {
@@ -99,7 +98,7 @@ ihw_forest <- function(pvalues, covariates, alpha,
 
   # the stratification method is the main point of deviation of ihw.default_forest from ihw.default
   # groups in ihw.default_forest has the structure of nested list compared to a simple vector in ihw.default
-  groups <- group_by_forest(pvalues, covariates, folds, ntrees, n_censor_thres, nsplit, nodedepth, nodesize, mtry, seed)
+  groups <- group_by_forest(pvalues, covariates, folds, ntrees, n_censor_thres, nodedepth, nodesize, mtry, seed)
 
   penalty <- "total variation"
 
@@ -265,12 +264,8 @@ ihw_forest <- function(pvalues, covariates, alpha,
 #' @param folds Integer vector, Pre-specify assignment of hypotheses into folds.
 #' @param ntrees Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}}
 #' @param n_censor_thres Integer, number of censoring thresholds tau to be considered
-#' @param nsplit Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}}
-#'               Use "auto" for automatic selection.
 #' @param nodedepth Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}}
-#'               Use "auto" for automatic selection.
 #' @param nodesize Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}}
-#'               Use "auto" for automatic selection.
 #' @param mtry Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}}
 #'               Use "auto" for automatic selection.
 #' @param seed Integer, specifies random seed to be used
@@ -292,20 +287,16 @@ ihw_forest <- function(pvalues, covariates, alpha,
 #'   lapply(group, function(group_i) table(group_i, folds))
 #' })
 #' @export
-group_by_forest <- function(pvalues, covariates, folds, ntrees = 10, n_censor_thres = 5, nsplit = "auto", nodedepth = "auto", nodesize = "auto", mtry = "auto", seed = NULL) {
+group_by_forest <- function(pvalues, covariates, folds, ntrees = 10, n_censor_thres = 5, nodedepth = 4, nodesize = 1000, mtry = "auto", seed = NULL) {
   m <- length(pvalues)
   nfolds <- length(unique(folds))
-
-  # TODO we will revisit smart smart default parameter choices later
-  if (nodesize == "auto") nodesize <- floor(0.9 * (m / 8))
-  if (nsplit == "auto") nsplit <- 3
+  
   if (mtry == "auto") mtry <- ceiling(0.9 * ncol(covariates)) # a lot of noise data => high mtry
-  if (nodedepth == "auto") nodedepth <- 3
 
   nodesize <- as.integer(nodesize)
-  nsplit <- as.integer(nsplit)
   mtry <- as.integer(mtry)
   nodedepth <- as.integer(nodedepth)
+
   pvalues_boundaries <- range(pvalues)
 
   groups <- lapply(seq_len(nfolds), function(i) {
@@ -335,7 +326,6 @@ group_by_forest <- function(pvalues, covariates, folds, ntrees = 10, n_censor_th
         nodesize = nodesize,
         nodedepth = nodedepth,
         splitrule = "mse",
-        nsplit = nsplit,
         block.size = FALSE,
         forest.wt = FALSE,
         seed = seed
@@ -346,12 +336,13 @@ group_by_forest <- function(pvalues, covariates, folds, ntrees = 10, n_censor_th
 
       groups <- predict_groups$membership
       groups <- as.data.frame(groups)
-      groups[] <- lapply(groups, as.factor)
+      groups[] <- lapply(groups, as.factor) 
 
+      
       quantile_seq_i_round <- round(100 * quantile_seq_i, 0)
       colnames(groups) <- paste0(quantile_seq_i_round, "%_tree", seq_along(groups))
       return(groups)
-    })
+    })F
 
     groups <- do.call(cbind, groups)
     names(groups) <- paste0("fold", i, "_", names(groups))

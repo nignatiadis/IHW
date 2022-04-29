@@ -50,12 +50,8 @@ ihw <- function(...)
 #' @param stratification_method Character ("quantiles" or "forest" or "none")
 #' @param ntrees Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}} used when \code{stratification_method=="forest"}
 #' @param n_censor_thres Integer, number of censoring thresholds tau to be considered for stratification method "forest"
-#' @param nsplit Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}} used when \code{stratification_method=="forest"}
-#'				Use "auto" for automatic selection.
 #' @param nodedepth Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}} used when \code{stratification_method=="forest"}
-#'				Use "auto" for automatic selection.
 #' @param nodesize Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}} used when \code{stratification_method=="forest"}
-#'				Use "auto" for automatic selection.
 #' @param mtry Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}} used when \code{stratification_method=="forest"}
 #'				Use "auto" for automatic selection.
 #' @param ... Arguments passed to internal functions.
@@ -103,9 +99,8 @@ ihw.default <- function(pvalues, covariates, alpha,
 						stratification_method = "quantiles",
 						ntrees = 5L,
 						n_censor_thres = 10L,
-						nsplit = "auto",
-						nodedepth = "auto",
-						nodesize = "auto",
+						nodedepth = 4,
+						nodesize = 1000,
 						mtry = "auto",
 						...){
 
@@ -144,7 +139,6 @@ ihw.default <- function(pvalues, covariates, alpha,
       return_internal,
       ntrees,
       n_censor_thres,
-      nsplit,
       nodedepth,
       nodesize,
       mtry,

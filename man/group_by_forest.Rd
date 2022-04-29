@@ -13,9 +13,14 @@ group_by_forest(
   folds,
   ntrees = 10,
   n_censor_thres = 5,
+<<<<<<< HEAD
   nsplit = "auto",
   nodedepth = "auto",
   nodesize = "auto",
+=======
+  nodedepth = 4,
+  nodesize = 1000,
+>>>>>>> export_strat
   mtry = "auto",
   seed = NULL
 )
@@ -31,14 +36,17 @@ group_by_forest(
 
 \item{n_censor_thres}{Integer, number of censoring thresholds tau to be considered}
 
+<<<<<<< HEAD
 \item{nsplit}{Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}}
 Use "auto" for automatic selection.}
 
 \item{nodedepth}{Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}}
 Use "auto" for automatic selection.}
+=======
+\item{nodedepth}{Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}}}
+>>>>>>> export_strat
 
-\item{nodesize}{Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}}
-Use "auto" for automatic selection.}
+\item{nodesize}{Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}}}
 
 \item{mtry}{Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}}
 Use "auto" for automatic selection.}
