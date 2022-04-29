@@ -131,7 +131,7 @@ ihw_forest <- function(pvalues, covariates, alpha,
   })
   group_levels_length <- unlist(group_levels_length)
   nbins_ideal <- max(1,min(40, floor(length(pvalues)/1500))) # rule of thumb..
-  if(any(group_levels_length) < nbins_ideal){
+  if(all(group_levels_length) < nbins_ideal){
     message(paste("For", length(pvalues), "non-na pvalues, we recommend", nbins_ideal," stratification bins for granular hypothesis weighting. Consider to increase nodedepth or decrease nodesize."))
   }
   
