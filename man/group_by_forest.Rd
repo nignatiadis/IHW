@@ -2,10 +2,7 @@
 % Please edit documentation in R/ihw_forest.R
 \name{group_by_forest}
 \alias{group_by_forest}
-\title{Stratify hypotheses based on random forest construction, alternative to \code{groups_by_filter_multivariate}
-  groups are homogenous wrt to Storeys null proportion estimator
- 
- see https://doi.org/10.7717/peerj.6035 for details on BocaLeek construction}
+\title{Stratify hypotheses based on random forest construction}
 \usage{
 group_by_forest(
   pvalues,
@@ -13,14 +10,8 @@ group_by_forest(
   folds,
   ntrees = 10,
   n_censor_thres = 5,
-<<<<<<< HEAD
-  nsplit = "auto",
-  nodedepth = "auto",
-  nodesize = "auto",
-=======
   nodedepth = 4,
   nodesize = 1000,
->>>>>>> export_strat
   mtry = "auto",
   seed = NULL
 )
@@ -36,15 +27,7 @@ group_by_forest(
 
 \item{n_censor_thres}{Integer, number of censoring thresholds tau to be considered}
 
-<<<<<<< HEAD
-\item{nsplit}{Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}}
-Use "auto" for automatic selection.}
-
-\item{nodedepth}{Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}}
-Use "auto" for automatic selection.}
-=======
 \item{nodedepth}{Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}}}
->>>>>>> export_strat
 
 \item{nodesize}{Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}}}
 
@@ -57,7 +40,7 @@ Use "auto" for automatic selection.}
 list of data.frames representing group membership for each test. list length equals the number of folds.
 }
 \description{
-Stratify hypotheses based on random forest construction, alternative to \code{groups_by_filter_multivariate}
+Hypotheses are stratified into bins based on random forest construction, alternative to \code{groups_by_filter_multivariate}
   groups are homogenous wrt to Storeys null proportion estimator
  
  see https://doi.org/10.7717/peerj.6035 for details on BocaLeek construction

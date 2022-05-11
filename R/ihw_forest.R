@@ -255,7 +255,9 @@ ihw_forest <- function(pvalues, covariates, alpha,
   ihw_obj
 }
 
-#' Stratify hypotheses based on random forest construction, alternative to \code{groups_by_filter_multivariate}
+#' Stratify hypotheses based on random forest construction
+#'
+#' Hypotheses are stratified into bins based on random forest construction, alternative to \code{groups_by_filter_multivariate}
 #'   groups are homogenous wrt to Storeys null proportion estimator
 #'  
 #'  see https://doi.org/10.7717/peerj.6035 for details on BocaLeek construction
@@ -342,7 +344,7 @@ group_by_forest <- function(pvalues, covariates, folds, ntrees = 10, n_censor_th
       quantile_seq_i_round <- round(100 * quantile_seq_i, 0)
       colnames(groups) <- paste0(quantile_seq_i_round, "%_tree", seq_along(groups))
       return(groups)
-    })F
+    })
 
     groups <- do.call(cbind, groups)
     names(groups) <- paste0("fold", i, "_", names(groups))
