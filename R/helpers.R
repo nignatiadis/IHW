@@ -54,10 +54,12 @@ groups_by_filter_multivariate <- function(covariates, nbins, ties.method = "rand
   }
   
   nvar <- ncol(covariates)
+  nbin_dim <- max(1, floor(nbins ^ (1 / nvar))) #does not change anything, if nvar = 1
+  
   groups <- lapply(seq_len(nvar), function(i) {
     covariate_i <- covariates[, i, drop = TRUE]
     rfs_i <- rank(covariate_i, ties.method = ties.method) / length(covariate_i)
-    ceiling(rfs_i * nbins)
+    ceiling(rfs_i * nbin_dim)
   })
   
   if(nvar == 1){
