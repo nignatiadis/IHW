@@ -100,7 +100,7 @@ ihw_forest <- function(pvalues, covariates, alpha,
   # groups in ihw.default_forest has the structure of nested list compared to a simple vector in ihw.default
   groups <- group_by_forest(pvalues, covariates, folds, ntrees, n_censor_thres, nodedepth, nodesize, mtry, seed)
 
-  penalty <- "total variation"
+  penalty <- "uniform deviation"
 
   group_levels <- lapply(groups, function(groups_i) {
     lapply(groups_i, function(groups_i_t) levels(droplevels(groups_i_t)))
