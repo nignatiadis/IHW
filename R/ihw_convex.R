@@ -273,7 +273,7 @@ ihw.default <- function(pvalues, covariates, alpha,
 		}
 	}
 	# once we have groups, check whether they include enough p-values
-	if(nbins > 1 & any(m_groups < 2)){
+	if(nbins > 1 & all(m_groups < 2)){
 	  stop("Bins of size < 2 are currently not allowed for hypothesis weighting. Please lower the number of bins or try a different stratification method.")
 	} else if (nbins > 1 & any(m_groups < 1000)){
 		message("We recommend that you supply (many) more than 1000 p-values for meaningful data-driven hypothesis weighting results.")
@@ -788,7 +788,17 @@ ihw_convex <- function(split_sorted_pvalues, alpha, m_groups, m_groups_grenander
 presorted_grenander <- function(sorted_pvalues, m_total=length(sorted_pvalues),
 							grenander_binsize = 1,
 							quiet=TRUE){
-
+    if (m_total < 2) {
+      #uniform CDF
+      ll <- list(
+        length = 2,
+        x.knots = c(0,1), 
+        y.knots = c(0,1),
+        slope.knots = c(1,0)
+      )
+      return(ll)
+    }
+  
   	unique_pvalues <- unique(sorted_pvalues)
   	ecdf_values <- cumsum(tabulate(match(sorted_pvalues, unique_pvalues)))/m_total
 

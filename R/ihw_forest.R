@@ -136,7 +136,7 @@ ihw_forest <- function(pvalues, covariates, alpha,
   
   # once we have groups, check whether they include enough p-values
   m_groups_unlist <- unlist(m_groups)
-  if (any(m_groups_unlist < 2)) {
+  if (all(m_groups_unlist < 2)) {
     stop("Bins of size < 2 are currently not allowed. Please decrease nodedepth or increase nodesize.")
   } else if (any(m_groups_unlist < 1000)) {
     message("We recommend that you supply (many) more than 1000 p-values for meaningful data-driven hypothesis weighting results. Consider to decrease nodedepth or increase nodesize.")
