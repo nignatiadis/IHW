@@ -224,7 +224,11 @@ setMethod("nfolds", signature(object="ihwResult"),
 #----------------- nbins extraction ----------------------------------------------------------------------#
 nbins_ihwResult <- function(object){
   if(object@stratification_method == "forest"){
-    stop("nbins() currently not available for stratification_method = forest")
+    lengths <- lapply(object@weight_matrices_forest, function(weight_matrices_forest_fold){
+      sapply(weight_matrices_forest_fold, length)
+    })
+    return(lengths)
+    #stop("nbins() currently not available for stratification_method = forest")
   }
   object@nbins
 } 
