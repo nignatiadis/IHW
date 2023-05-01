@@ -45,7 +45,7 @@ setMethod("plot", signature="ihwResult",
 	  #multi-dimensional covariate handling
 	  nvar <- sum(grepl("^covariate", names(x@df)))
 	  if(nvar == 2 & x@stratification_method == "quantiles" & x_axis == "covariate"& what == "weights" & scale == "ordinal"){
-	    return(plot_weights_quantile_2d(x) )
+	    return(plot_weights_quantile_2d(x))
 	  }else if(nvar > 2){
 	    stop(sprintf("Plotting not implemented for %s covariates", nvar))
 	  }
