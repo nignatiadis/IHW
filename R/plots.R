@@ -151,6 +151,18 @@ groups_by_filter_multivariate_eval <- function(covariates_train, covariates_eval
   groups
 }
 
+#' @examples
+#'
+#'    save.seed <- .Random.seed; set.seed(1)
+#'    X   <- runif(20000, min = 0.5, max = 4.5) # covariate
+#'    H   <- rbinom(20000, 1, 0.1)              # hypothesis true or false
+#'    Z   <- rnorm(20000, H*X)                  # z-score
+#'    .Random.seed <- save.seed
+#'    pvalue <- 1-pnorm(Z)                      # pvalue
+#'    X   <- cbind(X, runif(20000))             # add noise
+#'    ihw_res <- ihw(pvalue, X, .1)
+#'    plot(ihw_res)
+#'    
 plot_weights_quantile_2d <- function(ihw_quantiles, m_eval = 100,  fold = 1){
   ihw_quantiles_df <- ihw_quantiles@df
   
