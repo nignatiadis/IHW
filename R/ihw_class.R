@@ -355,7 +355,9 @@ setMethod("show", signature(object="ihwResult"), function(object) {
   }
   cat("ihwResult object with", nrow(object),"hypothesis tests \n")
   cat("Nominal",  typeI_error, "control level:", alpha(object),"\n")
-  cat("Split into", nbins(object),"bins, based on an", covariate_type(object), "covariate\n")
+  if(is.matrix(covariates) & ncol(covariates) == 1){
+    cat("Split into", nbins(object),"bins, based on an", covariate_type(object), "covariate\n")
+  }
 })
 
 
