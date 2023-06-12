@@ -43,8 +43,8 @@ ihw_forest <- function(pvalues, covariates, alpha,
 
   if ((length(lambdas) == 1) & (lambdas[1] == "auto")) {
     nbins <- max(1, min(40, floor(length(pvalues) / 1500))) # rule of thumb..
-    # just a few for now until I get warm starts of the LP solvers to work
-    lambdas <- c(0, 1, nbins / 8, nbins / 4, nbins / 2, nbins, Inf)
+    #default for forest without regularisation
+    lambdas <- Inf
   }
 
   if (nfolds == 1) {
