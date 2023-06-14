@@ -187,11 +187,6 @@ ihw.default <- function(pvalues, covariates, alpha,
 	if (covariate_type =="ordinal" & is.numeric(covariates)){
 	  covariates <- as.matrix(covariates)
 	  nvar <- ncol(covariates)
-	  if (nvar == 1) {
-	    colnames(covariates) <- "covariate"
-	  } else {
-	    colnames(covariates) <- seq_len(nvar)
-	  }
 	  
 		if (!is.null(m_groups)){
 			stop("m_groups should only be specified when the covariates are a factor")
@@ -207,7 +202,13 @@ ihw.default <- function(pvalues, covariates, alpha,
 	    stop("Unknown stratification method")
 	  }
 	  
-		penalty <- "total variation"
+	  if (nvar == 1) {
+	    colnames(covariates) <- "covariate"
+	    penalty <- "total variation"
+	  } else {
+	    colnames(covariates) <- seq_len(nvar)
+	    penalty <- "uniform deviation"
+	  }
 
 	} else if (is.factor(covariates)){
 	  stratification_method <- "none"
