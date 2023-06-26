@@ -43,7 +43,7 @@ ihw_forest <- function(pvalues, covariates, alpha,
 
   if ((length(lambdas) == 1) & (lambdas[1] == "auto")) {
     nbins <- max(1, min(40, floor(length(pvalues) / 1500))) # rule of thumb..
-    #default for forest without regularisation
+    # default for forest without regularisation
     lambdas <- Inf
   }
 
@@ -124,16 +124,16 @@ ihw_forest <- function(pvalues, covariates, alpha,
     lapply(sorted_groups_i, function(sorted_groups_i_t) table(sorted_groups_i_t, sorted_folds))
   })
 
-  #run diagnostic and give feedback
+  # run diagnostic and give feedback
   group_levels_length <- lapply(group_levels, function(group_levels_i) {
     lapply(group_levels_i, function(group_levels_i_t) length(group_levels_i_t))
   })
   group_levels_length <- unlist(group_levels_length)
-  nbins_ideal <- max(1,min(40, floor(length(pvalues)/1500))) # rule of thumb..
-  if(all(group_levels_length) < nbins_ideal){
-    message(paste("For", length(pvalues), "non-na pvalues, we recommend", nbins_ideal," stratification bins for granular hypothesis weighting. Consider to increase nodedepth or decrease nodesize."))
+  nbins_ideal <- max(1, min(40, floor(length(pvalues) / 1500))) # rule of thumb..
+  if (all(group_levels_length) < nbins_ideal) {
+    message(paste("For", length(pvalues), "non-na pvalues, we recommend", nbins_ideal, " stratification bins for granular hypothesis weighting. Consider to increase nodedepth or decrease nodesize."))
   }
-  
+
   # once we have groups, check whether they include enough p-values
   m_groups_unlist <- unlist(m_groups)
   if (all(m_groups_unlist < 2)) {
@@ -259,7 +259,7 @@ ihw_forest <- function(pvalues, covariates, alpha,
 #'
 #' Hypotheses are stratified into bins based on random forest construction, alternative to \code{groups_by_filter_multivariate}
 #'   groups are homogenous wrt to Storeys null proportion estimator
-#'  
+#'
 #'  see https://doi.org/10.7717/peerj.6035 for details on BocaLeek construction
 #' @param pvalues Numeric vector of unadjusted p-values.
 #' @param covariates Matrix which contains the covariates (independent under the H0 of the p-value) for each test.
@@ -289,65 +289,47 @@ ihw_forest <- function(pvalues, covariates, alpha,
 #'   lapply(group, function(group_i) table(group_i, folds))
 #' })
 #' @export
-group_by_forest <- function(pvalues, covariates, folds, ntrees = 10, n_censor_thres = 5, nodedepth = 4, nodesize = 1000, mtry = "auto", seed = NULL) {
+group_by_forest <- function(pvalues, covariates, folds, ntrees = 10, tau = 0.5, n_censor_thres = 5, nodedepth = 4, nodesize = 1000, mtry = "auto", seed = NULL) {
   m <- length(pvalues)
   nfolds <- length(unique(folds))
-  
+
   if (mtry == "auto") mtry <- ceiling(0.9 * ncol(covariates)) # a lot of noise data => high mtry
 
   nodesize <- as.integer(nodesize)
   mtry <- as.integer(mtry)
   nodedepth <- as.integer(nodedepth)
 
-  pvalues_boundaries <- range(pvalues)
 
   groups <- lapply(seq_len(nfolds), function(i) {
-    pvalues_other_folds <- pvalues[folds != i]
-    #remove boundaries from p-values
-    pvalues_other_folds <- pvalues_other_folds[!pvalues_other_folds %in% pvalues_boundaries]
+    # binary indicator from Boca and leek/storey
+    data <- data.frame(
+      indic = (pvalues >= tau),
+      covariates = covariates
+    )
+    data_other_folds <- data[folds != i, ]
 
-    # get quantile breaks, remove trivial tail and head
-    quantile_seq <- seq(0, 1, length.out = n_censor_thres + 2)[2:(n_censor_thres + 1)]
+    # grow forest based on other folds
+    forest_other_fold <- randomForestSRC::rfsrc(
+      indic ~ . - indic,
+      data = data_other_folds,
+      ntree = ntrees,
+      mtry = mtry,
+      nodesize = nodesize,
+      nodedepth = nodedepth,
+      splitrule = "mse",
+      block.size = FALSE,
+      forest.wt = FALSE,
+      seed = seed
+    )
 
-    groups <- lapply(quantile_seq, function(quantile_seq_i) {
-      # get represantative quantile breaks for he aus for good coverage
-      tau <- stats::quantile(pvalues_other_folds, quantile_seq_i)
-      # binary indicator from Boca and leek/storey
-      data <- data.frame(
-        indic = (pvalues >= tau),
-        covariates = covariates
-      )
-      data_other_folds <- data[folds != i, ]
+    # predict terminal nodes for all covariates based on the forest structure
+    predict_groups <- stats::predict(forest_other_fold, data, membership = TRUE)
 
-      # grow forest based on other folds
-      forest_other_fold <- randomForestSRC::rfsrc(
-        indic ~ . - indic,
-        data = data_other_folds,
-        ntree = ntrees,
-        mtry = mtry,
-        nodesize = nodesize,
-        nodedepth = nodedepth,
-        splitrule = "mse",
-        block.size = FALSE,
-        forest.wt = FALSE,
-        seed = seed
-      )
+    groups <- predict_groups$membership
+    groups <- as.data.frame(groups)
+    groups[] <- lapply(groups, as.factor)
 
-      # predict terminal nodes for all covariates based on the forest structure
-      predict_groups <- stats::predict(forest_other_fold, data, membership = TRUE)
-
-      groups <- predict_groups$membership
-      groups <- as.data.frame(groups)
-      groups[] <- lapply(groups, as.factor) 
-
-      
-      quantile_seq_i_round <- round(100 * quantile_seq_i, 0)
-      colnames(groups) <- paste0(quantile_seq_i_round, "%_tree", seq_along(groups))
-      return(groups)
-    })
-
-    groups <- do.call(cbind, groups)
-    names(groups) <- paste0("fold", i, "_", names(groups))
+    names(groups) <- paste0("fold", i, "_tree_", seq_along(groups))
     groups
   })
 
