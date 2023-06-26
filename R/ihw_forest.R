@@ -21,6 +21,7 @@ ihw_forest <- function(pvalues, covariates, alpha,
                        return_internal,
                        ntrees,
                        n_censor_thres,
+                       tau,
                        nodedepth,
                        nodesize,
                        mtry,
@@ -98,7 +99,7 @@ ihw_forest <- function(pvalues, covariates, alpha,
 
   # the stratification method is the main point of deviation of ihw.default_forest from ihw.default
   # groups in ihw.default_forest has the structure of nested list compared to a simple vector in ihw.default
-  groups <- group_by_forest(pvalues, covariates, folds, ntrees, n_censor_thres, nodedepth, nodesize, mtry, seed)
+  groups <- group_by_forest(pvalues, covariates, folds, ntrees, n_censor_thres, tau, nodedepth, nodesize, mtry, seed)
 
   penalty <- "uniform deviation"
 

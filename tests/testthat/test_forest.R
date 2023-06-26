@@ -81,7 +81,7 @@ expect_lt(rejections(ihw_num_mat_noise), m)
 
 #set forest parameter
 ntrees <- 2
-n_censor_thres <- 2
+n_censor_thres <- 1
 
 #run ihw forest with different covariate format
 set.seed(1)

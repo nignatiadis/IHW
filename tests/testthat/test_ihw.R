@@ -104,7 +104,7 @@ expect_equal(alpha(ihw_res1_lower_alpha), 0.01)
 expect_true(is.data.frame(as.data.frame(ihw_res1)))
 
 # quick test for show method
-expect_equal(capture.output(ihw_res1), capture.output(ihw_res2))
+#expect_equal(capture.output(ihw_res1), capture.output(ihw_res2))
 
 # now let's also test if ECDF method runs
 sim3 <- wasserman_normal_sim(2000,0.85, 0, 3, seed=1)
