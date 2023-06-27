@@ -81,15 +81,14 @@ expect_lt(rejections(ihw_num_mat_noise), m)
 
 #set forest parameter
 ntrees <- 2
-n_censor_thres <- 2
 
 #run ihw forest with different covariate format
 set.seed(1)
-ihw_forest_num_vec <- ihw(sim$pvalue, cov_num_vec, .1, stratification_method = "forest", ntrees = ntrees, n_censor_thres = n_censor_thres)
+ihw_forest_num_vec <- ihw(sim$pvalue, cov_num_vec, .1, stratification_method = "forest", ntrees = ntrees)
 set.seed(1)
-ihw_forest_num_mat <- ihw(sim$pvalue, cov_num_mat, .1, stratification_method = "forest", ntrees = ntrees, n_censor_thres = n_censor_thres)
+ihw_forest_num_mat <- ihw(sim$pvalue, cov_num_mat, .1, stratification_method = "forest", ntrees = ntrees)
 set.seed(1)
-ihw_forest_num_mat_noise <- ihw(sim$pvalue, cov_num_mat_noise, .1, stratification_method = "forest", ntrees = ntrees, n_censor_thres = n_censor_thres)
+ihw_forest_num_mat_noise <- ihw(sim$pvalue, cov_num_mat_noise, .1, stratification_method = "forest", ntrees = ntrees)
 
 #should be equivalent
 expect_equal(rejections(ihw_forest_num_vec), rejections(ihw_forest_num_mat)) 
@@ -118,12 +117,12 @@ expect_equal(nrow(covariates(ihw_forest_num_mat_noise)), m)
 
 #IHW::groups_factor
 expect_true(is.data.frame(groups_factor(ihw_forest_num_vec)))
-expect_equal(dim(groups_factor(ihw_forest_num_vec)), c(m, nfolds(ihw_forest_num_vec) *ntrees *n_censor_thres))
+expect_equal(dim(groups_factor(ihw_forest_num_vec)), c(m, nfolds(ihw_forest_num_vec) *ntrees ))
 
 #IHW::m_groups
 expect_warning(ihw_forest_num_vec_m_groups <- m_groups(ihw_forest_num_vec))
 expect_true(is.list(ihw_forest_num_vec_m_groups))
-expect_equal(nfolds(ihw_forest_num_vec) *ntrees *n_censor_thres, length(ihw_forest_num_vec_m_groups))
+expect_equal(nfolds(ihw_forest_num_vec) *ntrees, length(ihw_forest_num_vec_m_groups))
 expect_true(is.matrix(ihw_forest_num_vec_m_groups[[1]]))
 expect_equal(ncol(ihw_forest_num_vec_m_groups[[1]]), nfolds(ihw_forest_num_vec))
 

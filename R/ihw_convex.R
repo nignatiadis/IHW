@@ -49,7 +49,7 @@ ihw <- function(...)
 #' @param return_internal Returns a lower level representation of the output (only useful for debugging purposes).
 #' @param stratification_method Character ("quantiles" or "forest" or "none")
 #' @param ntrees Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}} used when \code{stratification_method=="forest"}
-#' @param n_censor_thres Integer, number of censoring thresholds tau to be considered for stratification method "forest"
+#' @param tau Double, censoring threshold tau of the pvalues in the stratification method "forest". See more in group_by_forest
 #' @param nodedepth Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}} used when \code{stratification_method=="forest"}
 #' @param nodesize Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}} used when \code{stratification_method=="forest"}
 #' @param mtry Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}} used when \code{stratification_method=="forest"}
@@ -98,7 +98,7 @@ ihw.default <- function(pvalues, covariates, alpha,
 						return_internal = FALSE,
 						stratification_method = "quantiles",
 						ntrees = 5L,
-						n_censor_thres = 10L,
+						tau = 0.5,
 						nodedepth = 4,
 						nodesize = 1000,
 						mtry = "auto",
@@ -138,7 +138,7 @@ ihw.default <- function(pvalues, covariates, alpha,
       null_proportion_level,
       return_internal,
       ntrees,
-      n_censor_thres,
+      tau,
       nodedepth,
       nodesize,
       mtry,
@@ -187,11 +187,6 @@ ihw.default <- function(pvalues, covariates, alpha,
 	if (covariate_type =="ordinal" & is.numeric(covariates)){
 	  covariates <- as.matrix(covariates)
 	  nvar <- ncol(covariates)
-	  if (nvar == 1) {
-	    colnames(covariates) <- "covariate"
-	  } else {
-	    colnames(covariates) <- seq_len(nvar)
-	  }
 	  
 		if (!is.null(m_groups)){
 			stop("m_groups should only be specified when the covariates are a factor")
@@ -207,7 +202,13 @@ ihw.default <- function(pvalues, covariates, alpha,
 	    stop("Unknown stratification method")
 	  }
 	  
-		penalty <- "total variation"
+	  if (nvar == 1) {
+	    colnames(covariates) <- "covariate"
+	    penalty <- "total variation"
+	  } else {
+	    colnames(covariates) <- seq_len(nvar)
+	    penalty <- "uniform deviation"
+	  }
 
 	} else if (is.factor(covariates)){
 	  stratification_method <- "none"
@@ -361,7 +362,7 @@ ihw.default <- function(pvalues, covariates, alpha,
 		 			solver_information = list(),
 					stratification_method = stratification_method,
 					weight_matrices_forest = list(),
-					n_censor_thres = integer(0),
+					tau = double(0),
 					ntrees = integer(0))
 
 	ihw_obj
