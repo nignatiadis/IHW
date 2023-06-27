@@ -72,7 +72,7 @@ ihw_forest <- function(pvalues, covariates, alpha,
   } else {
     colnames(covariates) <- seq_len(nvar)
   }
-
+  
   if (any(is.na(covariates))) {
     stop("Covariates corresponding to non-NA p-values should never be NA. Aborting.")
   }
@@ -300,7 +300,7 @@ group_by_forest <- function(pvalues, covariates, folds, ntrees = 10, n_censor_th
   nodedepth <- as.integer(nodedepth)
 
   pvalues_boundaries <- range(pvalues)
-
+  
   groups <- lapply(seq_len(nfolds), function(i) {
     pvalues_other_folds <- pvalues[folds != i]
     #remove boundaries from p-values
