@@ -147,45 +147,45 @@ An S4 class to represent the ihw output.
 }
 \section{Methods (by generic)}{
 \itemize{
-\item \code{adj_pvalues}: Extract adjusted pvalues
+\item \code{adj_pvalues(ihwResult)}: Extract adjusted pvalues
 
-\item \code{weights}: Extract weights
+\item \code{weights(ihwResult)}: Extract weights
 
-\item \code{thresholds}: Calculate ihw thresholds
+\item \code{thresholds(ihwResult)}: Calculate ihw thresholds
 
-\item \code{pvalues}: Extract pvalues
+\item \code{pvalues(ihwResult)}: Extract pvalues
 
-\item \code{weighted_pvalues}: Extract weighted pvalues
+\item \code{weighted_pvalues(ihwResult)}: Extract weighted pvalues
 
-\item \code{covariates}: Extract covariates
+\item \code{covariates(ihwResult)}: Extract covariates
 
-\item \code{covariate_type}: Extract type of covariate ("ordinal" or "nominal")
+\item \code{covariate_type(ihwResult)}: Extract type of covariate ("ordinal" or "nominal")
 
-\item \code{groups_factor}: Extract factor of stratification (grouping) variable
+\item \code{groups_factor(ihwResult)}: Extract factor of stratification (grouping) variable
 
-\item \code{nfolds}: Extract number of folds
+\item \code{nfolds(ihwResult)}: Extract number of folds
 
-\item \code{nbins}: Extract number of bins
+\item \code{nbins(ihwResult)}: Extract number of bins
 
-\item \code{alpha}: Extract nominal significance (alpha) level
+\item \code{alpha(ihwResult)}: Extract nominal significance (alpha) level
 
-\item \code{rejections}: Total number of rejected hypotheses by ihw procedure
+\item \code{rejections(ihwResult)}: Total number of rejected hypotheses by ihw procedure
 
-\item \code{rejected_hypotheses}: Get a boolean vector of the rejected hypotheses
+\item \code{rejected_hypotheses(ihwResult)}: Get a boolean vector of the rejected hypotheses
 
-\item \code{regularization_term}: Extract vector of regularization parameters used for each stratum
+\item \code{regularization_term(ihwResult)}: Extract vector of regularization parameters used for each stratum
 
-\item \code{m_groups}: Extract total number of hypotheses within each stratum
+\item \code{m_groups(ihwResult)}: Extract total number of hypotheses within each stratum
 
-\item \code{as.data.frame}: Coerce ihwResult to data frame
+\item \code{as.data.frame(ihwResult)}: Coerce ihwResult to data frame
 
-\item \code{nrow}: Return number of p-values
+\item \code{nrow(ihwResult)}: Return number of p-values
 
-\item \code{show}: Convenience method to show ihwResult object
+\item \code{show(ihwResult)}: Convenience method to show ihwResult object
 
-\item \code{stratification_breaks}: Return stratification breaks
+\item \code{stratification_breaks(ihwResult)}: Return stratification breaks
+
 }}
-
 \section{Slots}{
 
 \describe{
@@ -217,7 +217,7 @@ An S4 class to represent the ihw output.
 
 \item{\code{weight_matrices_forest}}{list of list of vectors, equivalent of weights, but for stratification method forest}
 
-\item{\code{n_censor_thres}}{Integer, number of censoring thresholds tau to be considered for stratification method "forest"}
+\item{\code{tau}}{Double, censoring threshold tau of the pvalues in the stratification method "forest". See more in group_by_forest}
 
 \item{\code{ntrees}}{Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}} for stratification method "forest"}
 }}

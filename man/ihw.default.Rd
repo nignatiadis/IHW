@@ -27,10 +27,10 @@
   null_proportion_level = 0.5,
   return_internal = FALSE,
   stratification_method = "quantiles",
-  ntrees = 5L,
-  n_censor_thres = 10L,
-  nodedepth = 4,
-  nodesize = 1000,
+  ntrees = 10L,
+  tau = 0.5,
+  nodedepth = NULL,
+  nodesize = 300,
   mtry = "auto",
   ...
 )
@@ -94,7 +94,7 @@ is used within each bin to estimate the proportion of null hypotheses.}
 
 \item{ntrees}{Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}} used when \code{stratification_method=="forest"}}
 
-\item{n_censor_thres}{Integer, number of censoring thresholds tau to be considered for stratification method "forest"}
+\item{tau}{Double, censoring threshold tau of the pvalues in the stratification method "forest". See more in group_by_forest}
 
 \item{nodedepth}{Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}} used when \code{stratification_method=="forest"}}
 

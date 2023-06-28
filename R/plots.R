@@ -152,6 +152,15 @@ groups_by_filter_multivariate_eval <- function(covariates_train, covariates_eval
   groups
 }
 
+#' 2-dimensional quantile plotting
+#'
+#' Plot weights of ihw for quantile stratification method in 2-dimensional case. 
+#'
+#' @param ihw_quantiles Object of class \code{ihwResult} 
+#' @param m_eval number of evaluation points on grid
+#' @param fold Fold to be plotted. 
+#'
+#' @return A \code{ggplot2} object.
 #' @examples
 #'
 #'    save.seed <- .Random.seed; set.seed(1)

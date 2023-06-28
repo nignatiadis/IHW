@@ -9,7 +9,7 @@ group_by_forest(
   covariates,
   folds,
   ntrees = 10,
-  n_censor_thres = 5,
+  tau = 0.5,
   nodedepth = 4,
   nodesize = 1000,
   mtry = "auto",
@@ -25,7 +25,7 @@ group_by_forest(
 
 \item{ntrees}{Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}}}
 
-\item{n_censor_thres}{Integer, number of censoring thresholds tau to be considered}
+\item{tau}{Double, censoring threshold tau of the pvalues in the stratification method "forest". See more in group_by_forest}
 
 \item{nodedepth}{Integer, see same parameter in \code{\link[randomForestSRC]{rfsrc}}}
 
@@ -42,8 +42,9 @@ list of data.frames representing group membership for each test. list length equ
 \description{
 Hypotheses are stratified into bins based on random forest construction, alternative to \code{groups_by_filter_multivariate}
   groups are homogenous wrt to Storeys null proportion estimator
- 
- see https://doi.org/10.7717/peerj.6035 for details on BocaLeek construction
+}
+\details{
+see https://doi.org/10.7717/peerj.6035 for details on BocaLeek construction
 }
 \examples{
 
