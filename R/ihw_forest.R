@@ -288,7 +288,7 @@ ihw_forest <- function(pvalues, covariates, alpha,
 #'   lapply(group, function(group_i) table(group_i, folds))
 #' })
 #' @export
-group_by_forest <- function(pvalues, covariates, folds, ntrees = 10, tau = 0.5, nodedepth = 4, nodesize = 1000, mtry = "auto", seed = NULL) {
+group_by_forest <- function(pvalues, covariates, folds, ntrees = 10, tau = 0.5, nodedepth = NULL, nodesize = 300, mtry = "auto", seed = NULL) {
   m <- length(pvalues)
   nfolds <- length(unique(folds))
 
