@@ -72,7 +72,7 @@ ihw_forest <- function(pvalues, covariates, alpha,
   } else {
     colnames(covariates) <- seq_len(nvar)
   }
-
+  
   if (any(is.na(covariates))) {
     stop("Covariates corresponding to non-NA p-values should never be NA. Aborting.")
   }
@@ -297,7 +297,6 @@ group_by_forest <- function(pvalues, covariates, folds, ntrees = 10, tau = 0.5, 
   nodesize <- as.integer(nodesize)
   mtry <- as.integer(mtry)
   nodedepth <- as.integer(nodedepth)
-
 
   groups <- lapply(seq_len(nfolds), function(i) {
     # binary indicator from Boca and leek/storey
