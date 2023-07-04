@@ -98,9 +98,9 @@ ihw.default <- function(pvalues, covariates, alpha,
 						return_internal = FALSE,
 						stratification_method = "quantiles",
 						ntrees = 10L,
-						tau = 0.5,
+						tau = 0.6,
 						nodedepth = NULL,
-						nodesize = 300,
+						nodesize = 500,
 						mtry = "auto",
 						...){
 
