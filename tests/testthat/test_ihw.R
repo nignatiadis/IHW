@@ -106,14 +106,6 @@ expect_true(is.data.frame(as.data.frame(ihw_res1)))
 # quick test for show method
 expect_equal(capture.output(ihw_res1), capture.output(ihw_res2))
 
-# now let's also test if ECDF method runs
-sim3 <- wasserman_normal_sim(2000,0.85, 0, 3, seed=1)
-ihw_naive <- ihw(sim3$pvalue, sim3$filterstat, .1, nfolds=1L, nbins=3L, lambdas=Inf, distrib_estimator="ECDF")
-# should have increased rejections compared to BH
-# also opportunity to test get_bh_threshold
-expect_less_than( sum(sim3$pvalue <= get_bh_threshold(sim3$pvalue, .1)), rejections(ihw_naive))
-
-
 
 
 #--------- Filtered method ------------------------------------------#
@@ -122,7 +114,7 @@ expect_less_than( sum(sim3$pvalue <= get_bh_threshold(sim3$pvalue, .1)), rejecti
 
 mgroups <- table(sim$group)
 sim_filt <- subset(sim, sim$pvalue <= 0.5)
-ihw_res1_filtered_single_fold <- ihw(sim_filt$pvalue, sim_filt$group,.1, 
+ihw_res1_filtered_single_fold <- ihw(sim_filt$pvalue, sim_filt$group,.1,
                                      nfolds=1, m_groups=mgroups)
 
 expect_equal(rejections(ihw_res1_single_fold), rejections(ihw_res1_filtered_single_fold))

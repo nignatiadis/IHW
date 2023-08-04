@@ -37,4 +37,6 @@ VignetteBuilder: knitr
 biocViews: ImmunoOncology, 
     MultipleComparison,
     RNASeq
-RoxygenNote: 7.1.1
+RoxygenNote: 7.2.3
+Encoding: UTF-8
+
