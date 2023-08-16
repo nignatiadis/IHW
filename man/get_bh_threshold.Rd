@@ -9,17 +9,19 @@ get_bh_threshold(pvals, alpha, mtests = length(pvals))
 \arguments{
 \item{pvals}{Numeric, vector of p-values}
 
-\item{alpha}{Numeric in [0,1], significance level of the multiple testing procedure}
+\item{alpha}{Numeric in \link{0,1}, significance level of the multiple testing procedure}
 
 \item{mtests}{Integer, total number of hypothesis tests; only set this (to non-default) when you know what you are doing!}
 }
 \value{
-A numeric in [0,1], threshold of the BH procedure
+A numeric in \link{0,1}, threshold of the BH procedure
 }
 \description{
-Given pvalues and a nominal significance level alpha, this function returns the
-  rejection threshold of the Benjamini-Hochberg procedure, i.e. a value t_BH such that p-values with
-  P_i <= t_BH get rejected by the procedure.
+\if{html}{\out{<div class="sourceCode">}}\preformatted{  Given pvalues and a nominal significance level alpha, this function returns the
+}\if{html}{\out{</div>}}
+
+rejection threshold of the Benjamini-Hochberg procedure, i.e. a value t_BH such that p-values with
+P_i <= t_BH get rejected by the procedure.
 }
 \examples{
 pvalues <- c(runif(1000), rbeta(1000,0.5,7)) # generate some p-values

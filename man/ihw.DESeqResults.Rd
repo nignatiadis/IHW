@@ -11,7 +11,7 @@
 
 \item{filter}{Vector of length equal to number of rows of deseq_res object. This is used
 for the covariates in the call to ihw. Can also be a character,
-in which case deseq_res[[filter]] is used as the covariate}
+in which case deseq_res[\link{filter}] is used as the covariate}
 
 \item{alpha}{Numeric, sets the nominal level for FDR control.}
 
@@ -21,7 +21,7 @@ in which case deseq_res[[filter]] is used as the covariate}
 }
 \value{
 A "DESeqResults" object, which includes weights and adjusted p-values returned
-        	by IHW. In addition, includes a metadata slot with an "ihwResult" object.
+by IHW. In addition, includes a metadata slot with an "ihwResult" object.
 }
 \description{
 ihw.DESeqResults: IHW method dispatching on DESeqResults objects

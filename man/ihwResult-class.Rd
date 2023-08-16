@@ -118,17 +118,25 @@ as.data.frame_ihwResult(x, row.names = NULL, optional = FALSE, ...)
 \value{
 The different methods applied to an ihwResult object can return the following:
 
-1) A vector
-    of length equal to the number of hypotheses tested (e.g. the adjusted p-value or the weight
-    of each hypothesis).
+\enumerate{
+\item A vector
+of length equal to the number of hypotheses tested (e.g. the adjusted p-value or the weight
+of each hypothesis).
+}
 
-2) A matrix of dimension equal to nfolds x nbins (e.g. the weight of
-    each stratum, fold combination, set by specifying levels_only=TRUE).
+\enumerate{
+\item A matrix of dimension equal to nfolds x nbins (e.g. the weight of
+each stratum, fold combination, set by specifying levels_only=TRUE).
+}
 
-3) A vector of length 1 (usually a parameter of the ihwResult object such as nfolds or
-    the total number of rejections).
+\enumerate{
+\item A vector of length 1 (usually a parameter of the ihwResult object such as nfolds or
+the total number of rejections).
+}
 
-4) A data.frame (as.data.frame) or just console output (show) for the extended Base generics.
+\enumerate{
+\item A data.frame (as.data.frame) or just console output (show) for the extended Base generics.
+}
 
 See section below for the individual methods.
 }

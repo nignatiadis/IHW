@@ -3,9 +3,10 @@
 #include "TVopt_custom.h"
 #include "gperftools/profiler.h"
 
-#include <RcppParallel.h>
+// #include <RcppParallel.h>
 
 using namespace Rcpp;
+// using namespace RcppParallel;
 
 // Linear Algebra helper code
 typedef Eigen::SparseMatrix<double> SpMat;
@@ -213,10 +214,13 @@ NumericVector Grenander_invert_subgradient(List grenander_list, double lambda) {
 template <typename Func>
 double bisection(double a, double b, double tol, Func&& fun, bool use_geometric_mean = false) {
   double t;
-  int max_iterations = 10000;  // or another appropriate value
+  int max_iterations = 100000;  // or another appropriate value
   int iterations = 0;
+  double fb = fun(b);
+  double fa = fun(a);
+  double ft;
 
-  while (b - a > tol) {
+  while (fb - fa > tol) {
 
     if (iterations++ > max_iterations) {
       std::cout << "Warning: Maximum number of iterations reached!" << std::endl;
@@ -228,14 +232,15 @@ double bisection(double a, double b, double tol, Func&& fun, bool use_geometric_
     } else {
       t = (a + b) / 2;  // Arithmetic mean
     }
-
-    if (fun(t) < 0) {
+    ft = fun(t);
+    if (ft < 0) {
       a = t;
+      fa = ft;
     } else {
       b = t;
+      fb = ft;
     }
   }
-
   return (a + b) / 2;
 }
 
@@ -453,10 +458,7 @@ double GrenMix::lambda_max(double alpha, double mu_dual, double single_t) {
 
 NumericMatrix GrenMix::total_variation_path_ts(double alpha, const NumericVector& lambda_multipliers) {
   int num_grenanders = this->grenanders.size();
-
-  std::pair<double, double> mu_t = this->single_t_FDR(alpha);
-  double single_t = mu_t.first;
-  double mu_dual = mu_t.second;
+  NumericMatrix ts_array(num_grenanders, lambda_multipliers.size()+2);
 
   double max_density = 0.0;
 
@@ -467,6 +469,12 @@ NumericMatrix GrenMix::total_variation_path_ts(double alpha, const NumericVector
     }
   }
 
+  // std::cout << "max_density: " << max_density << std::endl;
+
+  if (max_density < 1/alpha) {
+    return ts_array;
+  }
+
   double min_density = max_density;
   for(int i = 0; i < num_grenanders; ++i) {
     double last_density = this->grenanders[i]->slope_knots[this->grenanders[i]->slope_knots.size() - 1];  // Get the last element
@@ -474,8 +482,18 @@ NumericMatrix GrenMix::total_variation_path_ts(double alpha, const NumericVector
       min_density = last_density;
     }
   }
+  // std::cout << "Just before single T " << std::endl;
+
+  std::pair<double, double> mu_t = this->single_t_FDR(alpha);
+  double single_t = mu_t.first;
+  double mu_dual = mu_t.second;
+
+  // std::cout << "Just after single T " << std::endl;
+
 
   double lambda_max = this->lambda_max(alpha, mu_dual, single_t);
+
+  //std::cout << "lambda_max " << lambda_max << std::endl;
 
   // Create lambdas using lambda_multipliers
   int num_lambdas = lambda_multipliers.size();
@@ -487,9 +505,9 @@ NumericMatrix GrenMix::total_variation_path_ts(double alpha, const NumericVector
   std::vector<double> bs(num_grenanders, single_t);
   std::vector<double> us(num_grenanders, 0.0);
   std::vector<double> ts_unreg = this->unregularized_thresholds_bh(alpha);
+  //std::vector<double> ts_unreg(num_grenanders, 0.1);
 
 
-  NumericMatrix ts_array(num_grenanders, lambdas.size()+2);
   for(int j = 0; j < num_grenanders; ++j){
     ts_array(j, 0) = single_t;
     ts_array(j, lambdas.size()+1) = ts_unreg[j];
@@ -504,28 +522,51 @@ NumericMatrix GrenMix::total_variation_path_ts(double alpha, const NumericVector
   double tol = alpha * std::pow(10.0, -4.0);  // Set tolerance.
 
   for(int i = 0; i < lambdas.size(); ++i) {
-    double rho = lambdas[i];
+    double rho = 100 * lambdas[i];// * 5000;
+    double lambda_by_rho = lambdas[i] / rho;
+    //if (i > 0){
+    //  double mult = lambda_multipliers[i-1]/lambda_multipliers[i];
+
+    //  for (int k = 0; k < num_grenanders; k++) {
+    //    us[k] = us[k] * mult;
+    //  }
+    //}
 
     for (int k = 0; k < num_grenanders; k++) {
       rho_prop[k] = rho / this->test_ms[k];
     }
 
-    for(int j = 0; j < 100; ++j) { // should replace this with an actual stopping rule
+    //std::cout << "lambda: " << rho << std::endl;
+
+    for (int k = 0; k < num_grenanders; k++) {
+      rho_prop[k] = rho / this->test_ms[k];
+    }
+
+    for(int j = 0; j < 500; ++j) { // should replace this with an actual stopping rule
+
+      if (i > 0){
+        // break;
+      }
 
       double zero_val = bisection(min_density, max_density, tol, [this, &bs, &rho_prop, &alpha](double mu) -> double {
         return -(this->lagrange_balance_tilted(mu, bs, rho_prop, alpha, false) - alpha);
       }, true);
 
+      //std::cout << "zero_val " << zero_val << std::endl;
+      //std::cout << "FDR " << lagrange_balance_tilted(zero_val, bs, rho_prop, alpha, false) << std::endl;
 
       for (int k = 0; k < num_grenanders; k++) {
         ts_iter[k] = this->grenanders[k]->invert_subgradient_tilted(zero_val, rho_prop[k], bs[k], alpha);
       }
 
+      //std::cout << "ts_iter0 " << ts_iter[0] << std::endl;
+
+
       for (int k = 0; k < num_grenanders; k++) {
         bs[k] =  ts_iter[k] + us[k];
       }
 
-      classicTautString_TV1(bs.data(), num_grenanders, 1.0, shift_iter_temp.data());
+      classicTautString_TV1(bs.data(), num_grenanders, lambda_by_rho, shift_iter_temp.data());
       for (double &value : shift_iter_temp) {
         if (value < 0.0) {
           value = 0.0;
@@ -534,17 +575,19 @@ NumericMatrix GrenMix::total_variation_path_ts(double alpha, const NumericVector
         }
       }
 
+      //std::cout << "shift_iter " << shift_iter_temp[0] << std::endl;
+
       double diff_sum = 0.0;
       double prev_sum = 0.0;
       for (int k = 0; k < num_grenanders; k++) {
-        diff_sum += std::abs(shift_iter_temp[k] - previous_shift_iter_temp[k]);
-        prev_sum += std::abs(previous_shift_iter_temp[k]);
+        diff_sum += std::abs(shift_iter_temp[k] - ts_iter[k]);
+        prev_sum += std::abs(ts_iter[k]);
       }
 
       double relative_change = (prev_sum > 0) ? (diff_sum / prev_sum) : 0;
 
       if (relative_change < 1e-3) {
-        break;  // break out of the loop if relative change is below the threshold
+         break;  // break out of the loop if relative change is below the threshold
       }
 
 
@@ -553,6 +596,8 @@ NumericMatrix GrenMix::total_variation_path_ts(double alpha, const NumericVector
         bs[k] = shift_iter_temp[k] - us[k];
         previous_shift_iter_temp[k] = shift_iter_temp[k];
       }
+      //std::cout << "us0 " << us[0] << std::endl;
+
     }
     for(int j = 0; j < num_grenanders; ++j){
       ts_array(j,i+1) = shift_iter_temp[j];

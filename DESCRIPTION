@@ -1,6 +1,6 @@
 Package: IHW
 Title: Independent Hypothesis Weighting
-Version: 1.29.0
+Version: 1.29.1
 Authors@R: c(person("Nikos", "Ignatiadis", email = "nikos.ignatiadis01@gmail.com", role = c("aut", "cre")),
              person("Wolfgang", "Huber", role = "aut"))
 Description: Independent hypothesis weighting (IHW) is a multiple testing
@@ -16,10 +16,10 @@ License: Artistic-2.0
 LazyData: true
 Imports:
     methods,
-    slam,
-    lpsymphony,
     fdrtool,
-    BiocGenerics
+    BiocGenerics,
+    Rcpp,
+    RcppEigen
 Suggests:
     ggplot2,
     dplyr,
@@ -37,6 +37,12 @@ VignetteBuilder: knitr
 biocViews: ImmunoOncology, 
     MultipleComparison,
     RNASeq
+Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.2.3
 Encoding: UTF-8
+LinkingTo: 
+    Rcpp,
+    RcppEigen
+
+
 

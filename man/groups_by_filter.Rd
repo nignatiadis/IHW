@@ -17,7 +17,7 @@ groups_by_filter(covariate, nbins, ties.method = "random", seed = NULL)
 }
 \value{
 A factor with nbins different levels, each entry corresponds to the stratum the i-th hypothesis
- was assigned to.
+was assigned to.
 }
 \description{
 Hypotheses are stratified into nbins different strata of (approximately) equal size based on
