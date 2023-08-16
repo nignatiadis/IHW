@@ -1,7 +1,6 @@
 #include <Rcpp.h>
 #include <RcppEigen.h>
 #include "TVopt_custom.h"
-#include "gperftools/profiler.h"
 
 // #include <RcppParallel.h>
 
@@ -665,15 +664,4 @@ double lambdaMax(List train_grenander, NumericVector test_ms, double alpha, doub
    return gren_mix.total_variation_path_ts(alpha, lambda_multipliers);
  }
 
-// [[Rcpp::export]]
-SEXP start_profiler(SEXP str) {
-  ProfilerStart(as<const char*>(str));
-  return R_NilValue;
-}
-
-// [[Rcpp::export]]
-SEXP stop_profiler() {
-  ProfilerStop();
-  return R_NilValue;
-}
 
