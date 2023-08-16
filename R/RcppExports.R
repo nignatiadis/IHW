@@ -53,11 +53,3 @@ optimal_ts <- function(train_grenander, test_ms, alpha, lambda_multipliers) {
     .Call(`_IHW_optimal_ts`, train_grenander, test_ms, alpha, lambda_multipliers)
 }
 
-start_profiler <- function(str) {
-    .Call(`_IHW_start_profiler`, str)
-}
-
-stop_profiler <- function() {
-    .Call(`_IHW_stop_profiler`)
-}
-

@@ -170,27 +170,6 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// start_profiler
-SEXP start_profiler(SEXP str);
-RcppExport SEXP _IHW_start_profiler(SEXP strSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< SEXP >::type str(strSEXP);
-    rcpp_result_gen = Rcpp::wrap(start_profiler(str));
-    return rcpp_result_gen;
-END_RCPP
-}
-// stop_profiler
-SEXP stop_profiler();
-RcppExport SEXP _IHW_stop_profiler() {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    rcpp_result_gen = Rcpp::wrap(stop_profiler());
-    return rcpp_result_gen;
-END_RCPP
-}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_IHW_Rcpp_classicTautString_TV1", (DL_FUNC) &_IHW_Rcpp_classicTautString_TV1, 2},
@@ -205,8 +184,6 @@ static const R_CallMethodDef CallEntries[] = {
     {"_IHW_InvertSubgradientTilted", (DL_FUNC) &_IHW_InvertSubgradientTilted, 5},
     {"_IHW_lambdaMax", (DL_FUNC) &_IHW_lambdaMax, 5},
     {"_IHW_optimal_ts", (DL_FUNC) &_IHW_optimal_ts, 4},
-    {"_IHW_start_profiler", (DL_FUNC) &_IHW_start_profiler, 1},
-    {"_IHW_stop_profiler", (DL_FUNC) &_IHW_stop_profiler, 0},
     {NULL, NULL, 0}
 };
 
