@@ -303,7 +303,7 @@ setMethod("show", signature(object="ihwResult"), function(object) {
   } else if (adj_type == "bonferroni"){
     typeI_error <- "FWER"
   } else {
-    stop("Adjustment method appears to be invalid, corrupted IHW object.")
+    stop("Adjustment method appears to be invalid, corrupted IHWold object.")
   }
   cat("ihwResult object with", nrow(object),"hypothesis tests \n")
   cat("Nominal",  typeI_error, "control level:", alpha(object),"\n")

@@ -1,7 +1,7 @@
 # plot weights VS group (categorical)
 
 
-#' Plot functions for IHW 
+#' Plot functions for IHWold 
 #'
 #' See the vignette for usage examples. 
 #'

@@ -10,7 +10,7 @@ ihw <- function(...)
 #' ihw: Main function for Independent Hypothesis Weighting
 #'
 #' Given a vector of p-values, a vector of covariates which are independent of the p-values under the null hypothesis and
-#' a nominal significance level alpha, IHW learns multiple testing weights and then applies the weighted Benjamini Hochberg
+#' a nominal significance level alpha, IHWold learns multiple testing weights and then applies the weighted Benjamini Hochberg
 #' (or Bonferroni) procedure.
 #'
 #'
@@ -40,7 +40,7 @@ ihw <- function(...)
 #'	the seed of the random number generator is set to this value at the start of the function. Use NULL if you don't want to set the seed.
 #' @param distrib_estimator  Character ("grenander" or "ECDF"). Only use this if you know what you are doing. ECDF with nfolds > 1
 #'              or lp_solver == "lpsymphony" will in general be excessively slow, except for very small problems.
-#' @param lp_solver  Character ("lpsymphony" or "gurobi"). Internally, IHW solves a sequence of linear programs, which
+#' @param lp_solver  Character ("lpsymphony" or "gurobi"). Internally, IHWold solves a sequence of linear programs, which
 #'        can be solved with either of these solvers.
 #' @param adjustment_type Character ("BH" or "bonferroni") depending on whether you want to control FDR or FWER.
 #' @param null_proportion Boolean, if True (default is False), a modified version of Storey's estimator
@@ -61,7 +61,7 @@ ihw <- function(...)
 #' .Random.seed <- save.seed
 #' pvalue <- 1-pnorm(Z)                  # pvalue
 #'
-#' ihw_fdr <- ihw(pvalue, X, .1)        # Standard IHW for FDR control
+#' ihw_fdr <- ihw(pvalue, X, .1)        # Standard IHWold for FDR control
 #' ihw_fwer <- ihw(pvalue, X, .1, adjustment_type = "bonferroni")    # FWER control
 #
 #' table(H[adj_pvalues(ihw_fdr) <= 0.1] == 0) #how many false rejections?
@@ -98,7 +98,7 @@ ihw.default <- function(pvalues, covariates, alpha,
 
 
 	if (!adjustment_type %in% c("BH","bonferroni")){
-		stop("IHW currently only works with BH or bonferroni types of multiple testing corrections")
+		stop("IHWold currently only works with BH or bonferroni types of multiple testing corrections")
 	}
 
 	if (adjustment_type == "bonferroni" & distrib_estimator != "grenander"){
@@ -228,7 +228,7 @@ ihw.default <- function(pvalues, covariates, alpha,
 		nfolds <- 1L
 		nfolds_internal <- 1L
 		nsplits_internal <- 1L
-		message("Only 1 bin; IHW reduces to Benjamini Hochberg (uniform weights)")
+		message("Only 1 bin; IHWold reduces to Benjamini Hochberg (uniform weights)")
 		sorted_adj_p <- p.adjust(sorted_pvalues, method=adjustment_type, n=sum(m_groups))
 		rjs <- sum(sorted_adj_p <= alpha)
 		res <- list(lambda=0, fold_lambdas=0, rjs=rjs, sorted_pvalues=sorted_pvalues,
@@ -458,7 +458,7 @@ ihw.formula <- function(formula, data=parent.frame(), ...){
 }
 
 
-#' ihw.DESeqResults: IHW method dispatching on DESeqResults objects
+#' ihw.DESeqResults: IHWold method dispatching on DESeqResults objects
 #'
 #' @param deseq_res "DESeqResults" object
 #' @param filter Vector of length equal to number of rows of deseq_res object. This is used
@@ -469,7 +469,7 @@ ihw.formula <- function(formula, data=parent.frame(), ...){
 #' @param ... Other optional keyword arguments passed to ihw.
 #'
 #' @return A "DESeqResults" object, which includes weights and adjusted p-values returned
-#'         	by IHW. In addition, includes a metadata slot with an "ihwResult" object.
+#'         	by IHWold. In addition, includes a metadata slot with an "ihwResult" object.
 #' @seealso ihw, ihwResult
 #'
 #' @examples \dontrun{
@@ -507,7 +507,7 @@ ihw.DESeqResults <- function(deseq_res, filter="baseMean",
 	mcols(deseq_res)$description[names(deseq_res)=="padj"] <- paste("Weighted", adjustment_type,"adjusted p-values")
 
 	mcols(deseq_res)$type[names(deseq_res)=="weight"] <- "results"
-	mcols(deseq_res)$description[names(deseq_res)=="weight"] <- "IHW weights"
+	mcols(deseq_res)$description[names(deseq_res)=="weight"] <- "IHWold weights"
 
 	metadata(deseq_res)[["alpha"]] <- alpha
 	metadata(deseq_res)[["ihwResult"]] <- ihw_res
@@ -653,7 +653,7 @@ ihw_convex <- function(split_sorted_pvalues, alpha, m_groups, m_groups_grenander
 		#}
 
 		if (!requireNamespace("Matrix", quietly=TRUE)){
-			stop("Matrix package required to use gurobi in IHW.")
+			stop("Matrix package required to use gurobi in IHWold.")
 		}
 
 		model <- list()
@@ -734,7 +734,7 @@ presorted_grenander <- function(sorted_pvalues, m_total=length(sorted_pvalues),
 
 # mostly deprecated function (users should not be using it)
 # needed for reproducibility of manuscript
-# to demonstrate that "naive IHW" algorithm does not control type-I error
+# to demonstrate that "naive IHWold" algorithm does not control type-I error
 
 ihw_milp <- function(split_sorted_pvalues, alpha, m_groups, lambda=Inf, lp_solver="gurobi", 
 		quiet=quiet,
@@ -1003,7 +1003,7 @@ ihw_milp <- function(split_sorted_pvalues, alpha, m_groups, lambda=Inf, lp_solve
 		#}
 
 		if (!requireNamespace("Matrix", quietly=TRUE)){
-			stop("Matrix package required to use gurobi in IHW.")
+			stop("Matrix package required to use gurobi in IHWold.")
 		}
 		# keep code for commercial solver for now
 		#speed up compared to Symphony appears to be at least ~2-10, depending on problem

@@ -72,7 +72,7 @@ the seed of the random number generator is set to this value at the start of the
 \item{distrib_estimator}{Character ("grenander" or "ECDF"). Only use this if you know what you are doing. ECDF with nfolds > 1
 or lp_solver == "lpsymphony" will in general be excessively slow, except for very small problems.}
 
-\item{lp_solver}{Character ("lpsymphony" or "gurobi"). Internally, IHW solves a sequence of linear programs, which
+\item{lp_solver}{Character ("lpsymphony" or "gurobi"). Internally, IHWold solves a sequence of linear programs, which
 can be solved with either of these solvers.}
 
 \item{adjustment_type}{Character ("BH" or "bonferroni") depending on whether you want to control FDR or FWER.}
@@ -95,7 +95,7 @@ A ihwResult object.
 }
 \description{
 Given a vector of p-values, a vector of covariates which are independent of the p-values under the null hypothesis and
-a nominal significance level alpha, IHW learns multiple testing weights and then applies the weighted Benjamini Hochberg
+a nominal significance level alpha, IHWold learns multiple testing weights and then applies the weighted Benjamini Hochberg
 (or Bonferroni) procedure.
 }
 \examples{
@@ -107,7 +107,7 @@ Z   <- rnorm(20000, H*X)              # Z-score
 .Random.seed <- save.seed
 pvalue <- 1-pnorm(Z)                  # pvalue
 
-ihw_fdr <- ihw(pvalue, X, .1)        # Standard IHW for FDR control
+ihw_fdr <- ihw(pvalue, X, .1)        # Standard IHWold for FDR control
 ihw_fwer <- ihw(pvalue, X, .1, adjustment_type = "bonferroni")    # FWER control
 table(H[adj_pvalues(ihw_fdr) <= 0.1] == 0) #how many false rejections?
 table(H[adj_pvalues(ihw_fwer) <= 0.1] == 0)

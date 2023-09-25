@@ -2,7 +2,7 @@
 % Please edit documentation in R/ihw_convex.R
 \name{ihw.DESeqResults}
 \alias{ihw.DESeqResults}
-\title{ihw.DESeqResults: IHW method dispatching on DESeqResults objects}
+\title{ihw.DESeqResults: IHWold method dispatching on DESeqResults objects}
 \usage{
 \method{ihw}{DESeqResults}(deseq_res, filter = "baseMean", alpha = 0.1, adjustment_type = "BH", ...)
 }
@@ -21,10 +21,10 @@ in which case deseq_res[[filter]] is used as the covariate}
 }
 \value{
 A "DESeqResults" object, which includes weights and adjusted p-values returned
-        	by IHW. In addition, includes a metadata slot with an "ihwResult" object.
+        	by IHWold. In addition, includes a metadata slot with an "ihwResult" object.
 }
 \description{
-ihw.DESeqResults: IHW method dispatching on DESeqResults objects
+ihw.DESeqResults: IHWold method dispatching on DESeqResults objects
 }
 \examples{
 \dontrun{

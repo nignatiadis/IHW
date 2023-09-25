@@ -10,11 +10,11 @@ wasserman_normal_sim <- function(m, pi0, xi_min, xi_max, seed=NULL){
 
 
 sim <- wasserman_normal_sim(10000,0.85, 0, 3, seed=1)
-sim$group <- as.factor(IHW:::groups_by_filter(sim$filterstat, 10))
+sim$group <- as.factor(IHWold:::groups_by_filter(sim$filterstat, 10))
 
 ihw_res1 <- ihw(sim$pvalue, sim$filterstat, .1, nbins=10)
 
-expect_true(all(apply(weights(ihw_res1, levels_only=T),2, IHW:::total_variation) <= ihw_res1@regularization_term + 10^(-12)))
+expect_true(all(apply(weights(ihw_res1, levels_only=T),2, IHWold:::total_variation) <= ihw_res1@regularization_term + 10^(-12)))
 
 
 # now test the formula interface
@@ -42,7 +42,7 @@ plot(ihw_res2)
 
 ihw_res3 <- ihw(sim$pvalue, sim$group, .1, covariate_type="nominal")
 
-expect_true(all(apply(weights(ihw_res3, levels_only=T),2, IHW:::uniform_deviation) <= ihw_res3@regularization_term + 10^(-12)))
+expect_true(all(apply(weights(ihw_res3, levels_only=T),2, IHWold:::uniform_deviation) <= ihw_res3@regularization_term + 10^(-12)))
 
 # now test small inputs.
 sim_small <- wasserman_normal_sim(200,0.85, 0, 3, seed=1)
@@ -117,7 +117,7 @@ expect_less_than( sum(sim3$pvalue <= get_bh_threshold(sim3$pvalue, .1)), rejecti
 
 
 #--------- Filtered method ------------------------------------------#
-#-- Test if IHW with input of only p-values <= threshold , still works
+#-- Test if IHWold with input of only p-values <= threshold , still works
 #--------------------------------------------------------------------#
 
 mgroups <- table(sim$group)

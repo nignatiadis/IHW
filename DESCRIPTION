@@ -1,11 +1,11 @@
-Package: IHW
+Package: IHWold
 Title: Independent Hypothesis Weighting
 Version: 1.29.0
 Authors@R: c(person("Nikos", "Ignatiadis", email = "nikos.ignatiadis01@gmail.com", role = c("aut", "cre")),
              person("Wolfgang", "Huber", role = "aut"))
-Description: Independent hypothesis weighting (IHW) is a multiple testing
+Description: Independent hypothesis weighting (IHWold) is a multiple testing
     procedure that increases power compared to the method of Benjamini and Hochberg by assigning
-    data-driven weights to each hypothesis. The input to IHW is a two-column
+    data-driven weights to each hypothesis. The input to IHWold is a two-column
     table of p-values and covariates. The covariate can be any continuous-valued
     or categorical variable that is thought to be informative on the statistical
     properties of each hypothesis test, while it is independent of the p-value under
@@ -37,4 +37,4 @@ VignetteBuilder: knitr
 biocViews: ImmunoOncology, 
     MultipleComparison,
     RNASeq
-RoxygenNote: 7.1.1
+RoxygenNote: 7.2.3

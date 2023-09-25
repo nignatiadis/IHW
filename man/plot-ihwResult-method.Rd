@@ -2,7 +2,7 @@
 % Please edit documentation in R/plots.R
 \name{plot,ihwResult-method}
 \alias{plot,ihwResult-method}
-\title{Plot functions for IHW}
+\title{Plot functions for IHWold}
 \usage{
 \S4method{plot}{ihwResult}(
   x,
