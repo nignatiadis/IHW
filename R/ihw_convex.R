@@ -139,7 +139,7 @@ ihw.default <- function(pvalues,
     penalty <- "total variation"
 
   } else if (is.factor(covariates)) {
-    groups <- covariates
+    groups <- droplevels(covariates)
     if (nbins != "auto" & nbins != nlevels(groups)) {
       warning(
         "Overwriting manually specified nbins, since it has to equal the number
